@@ -2,13 +2,13 @@
 import numpy as np
 from . import enhance
 
-def print_stat(X:np.ndarray):
+def array_stat(X:np.ndarray):
     """
     Returns a dict of useful info about an array.
     """
     return {
             "shape":X.shape,
-            "stddev":np.std,
+            "stddev":np.std(X),
             "mean":np.average(X),
             "min":np.amin(X),
             "max":np.amax(X),

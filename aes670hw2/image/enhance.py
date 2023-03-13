@@ -29,6 +29,7 @@ def vertical_nearest_neighbor(X:np.ma.MaskedArray, debug=False):
     This method is intended for VIIRS bowtie correction as a cosmetic
     correction, but may be used for other purposes.
     """
+    print(f"Masked values: {np.count_nonzero(X.mask)}")
     if len(X.shape) != 2:
         raise ValueError(f"Array must be 2d; provided array shape: {X.shape}")
 
