@@ -19,7 +19,7 @@ def png_to_np(image_file:Path, debug=False):
     return X
 
 def get_category_series(X:np.ndarray, cat_count:int, category_names:list=None,
-                        show_pool=False, debug=False):
+                        show_pool=False, debug=True):
     """
     High-level UI method for selecting pixels for multiple categories using
     a cv2 window, which are returned as a list of (y,x) coordinates in a
