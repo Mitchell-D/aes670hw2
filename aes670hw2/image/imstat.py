@@ -42,6 +42,7 @@ def get_pixel_counts(X:np.ndarray, nbins, debug=False):
         counts[px] += 1
     return counts, bin_size, Xmin
 
+
 def get_cumulative_hist(X:np.ndarray, nbins:int, debug=False):
     """
     Get a cumulative array of binned pixel values for equalization
@@ -100,6 +101,33 @@ def histogram_equalize(X:np.ndarray, nbins:int,
     Y = np.vectorize(lambda px: c_hist[px])(enhance.norm_to_uint(X, nbins))
     return Y, bin_size, Xmin
 
+def linear_contrast(X:np.ndarray, nbins:int, a:float=1, b:float=0,
+                    debug=False):
+    """
+    Perform linear contrast stretching on the provided array, and return the
+    result as an integer. Simple linear equation y = ax+b with no
+    normalization.
+    """
+    return enhance.norm_to_uint(X*a+b, nbins)
+
+def saturated_linear_contrast(X:np.ndarray, nbins:int, lower_sat_pct:float=0,
+                              upper_sat_pct:float=1):
+    """
+    Perform saturated contrast stretching on an image, mapping the full range
+    of brightness values to the
+    """
+    if not lower_sat_pct < upper_sat_pct <= 1:
+        raise ValueError(f"The lower saturation percentile must be less " + \
+                "than the upper percentile, and both must be less than 1.")
+    X = enhance.linear_gamma_stretch(X)
+    X[np.where(X <= lower_sat_pct)] = lower_sat_pct
+    X[np.where(X >= upper_sat_pct)] = upper_sat_pct
+    return enhance.norm_to_uint(X, nbins)
+
+
+#def log_contrast(X:np.ndarray, )
+
+
 def do_histogram_analysis(X:np.ndarray, nbins:int, equalize:bool=False,
                           debug=False):
     """
@@ -131,3 +159,4 @@ def do_histogram_analysis(X:np.ndarray, nbins:int, equalize:bool=False,
                 X, nbins, cumulative_freq, debug=debug)
 
     return hist_dict
+

@@ -8,6 +8,7 @@ from datetime import datetime as dt
 from PIL import Image
 from pprint import pprint as ppt
 
+
 def png_to_np(image_file:Path, debug=False):
     """
     Uses PIL to convert a png image to a numpy array, and returns the result.
@@ -89,40 +90,87 @@ def get_category(X:np.ndarray, fill_color:tuple=(0,255,255),
     """
     # Without copying, this edits the provided ndarray inplace.
     Xnew = np.copy(X)
-    coords = set()
+    coords = []
     fill_color = np.asarray(fill_color)
     # Calculate RGB standard deviation by taking the sum of all bands' stddevs.
     array_std = sum([ np.std(X[:,:,i]) for i in range(X.shape[2]) ])
     def mouse_callback(event,x,y,flags,param):
         if event == cv.EVENT_LBUTTONDOWN:
-            coords.add((y, x))
+            coords.append((y, x))
             Xnew[y,x,:] = fill_color
             std = 0
             for i in range(X.shape[2]):
                 std += np.std([ X[y,x,i] for y,x in coords ])
             if debug:
                 print(f"\033[92mNew px:\033[0m \033[1m({y}, {x})\t" + \
-                    f"\033[92mTotal:\033[0m \033[1m{len(coords)}\t" + \
+                    f"\033[92mTotal:\033[0m \033[1m{len(set(coords))}\t" + \
                     f"\033[92mStdDev:\033[0m \033[1m{std:.4f}\033[0m")
 
     cv.namedWindow("catselect") # Can be resized
     cv.setMouseCallback("catselect", mouse_callback)
 
-    print("\033[1m\033[91mPress 'q' key to exit\033[0m")
+    print("\033[1m\033[91mPress 'q' key to exit.\033[0m")
+    print("\033[1m\033[91mPress 'x' key to cancel previous pixel.\033[0m")
     while True:
         cv.imshow('catselect', Xnew)
-        if cv.waitKey(1) & 0xFF == ord("q"):
+        key = cv.waitKey(1) & 0xFF
+        if key == ord("q"):
             break
+        elif key == ord("x"):
+            if not len(coords):
+                continue
+            y, x = coords.pop()
+            Xnew[y,x,:] = X[y,x,:]
 
     cv.destroyAllWindows()
     if show_pool and len(coords):
-        show_pixel_pool(np.stack([ X[y,x] for y,x in coords ], axis=0),
+        show_pixel_pool(np.stack([ X[y,x] for y,x in set(coords) ], axis=0),
                         debug=debug)
 
     return list(coords)
 
+def trackbar_select(X:np.ndarray, func, label:"", resolution:int=256,
+                    debug=False):
+    """
+    Use a trackbar to select an integer value in [0,255] which is used to
+    change and re-render the provided array with the modified values.
 
-def select_region(X:np.ndarray, show_selection:bool=False, debug=False):
+    When the user hits "q", the selected values for each function are
+    returned as a tuple in the same order that
+
+    If the trackbar associated with one of the functions is modified,
+    the function is called with only the
+    """
+    wname = "catselect"
+    # make a new copy of X that can be modified
+    Xnew = np.copy(X)
+    if not type(func)==type(lambda m:1):
+        raise ValueError(f"func argument must be a function with 2 " + \
+                "arguments for an array X and value a in [0,resolution-1]")
+
+    if debug: print(f"\033[92mSelecting for array \033[96m{label}\033[0m")
+    # Ordered list of selections from the user
+    selection = 0
+    def callback(user_value:int):
+        """
+        Applies user-defined function to Xnew with the user's selected value.
+        """
+        selection = user_value
+        cv.imshow(wname, func(np.copy(X), selection))
+
+    cv.namedWindow(wname)
+    cv.createTrackbar(label, wname, 0, resolution-1,
+                      lambda v: callback(v,selection))
+    cv.imshow("catselect", Xnew)
+
+    #cv.waitKey(1) & 0xFF == ord("q"):
+    #    break
+    cv.waitKey(0)
+    cv.destroyAllWindows()
+    print(selection)
+    return selection
+
+def region_select(X:np.ndarray, show_selection:bool=False, debug=False):
     """
     Render the image in a full-resolution cv2 and call selectROI
     """
@@ -146,6 +194,22 @@ def select_region(X:np.ndarray, show_selection:bool=False, debug=False):
 
     return ((y,y+h), (x,x+w))
 
+def quick_render(X:np.ndarray):
+    """
+    Method for rapidly rendering a 2d or 3d array as a sanity check.
+    """
+    if len(X.shape) == 2:
+        X = np.dstack((X, X, X))
+    elif len(X.shape) == 3:
+        assert X.shape[2]==3
+    cv.namedWindow("quick render")
+    print("\033[1m\033[91mPress 'q' key to exit\033[0m")
+    while True:
+        cv.imshow("quick render", X)
+        if cv.waitKey(1) & 0xFF == ord("q"):
+            break
+    cv.destroyAllWindows()
+
 def show_pixel_pool(pixels:np.ndarray, debug=False):
     """
     render a square array populated with as many of the selected pixels as
@@ -155,6 +219,9 @@ def show_pixel_pool(pixels:np.ndarray, debug=False):
     """
     if not len(pixels.shape)==2 and pixels.shape[1]==3:
         raise ValueError(f"Pixel array must have shape (N,3) for N pixels.")
+    if not len(pixels):
+        if debug: print(f"No pixels provided; not showing pixel pool.")
+        return
     side_length = int((pixels.shape[0])**(1/2) + 1)
     px_count = side_length**2
     pixels = np.concatenate((pixels,pixels[:px_count-len(pixels)]), axis=0)

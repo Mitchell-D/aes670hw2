@@ -1,6 +1,6 @@
 """
 A quick-and-dirty script for generating pkls of VIIRS imagery bands 3, 2, and
-1, and moderate-res bands 16, 11, 10, 5, 4, and 3, as well as IMG natural
+1, and moderate-res bands 15, 11, 10, 5, 4, and 3, as well as IMG natural
 color, and MOD truecolor/cloud phase.
 """
 from pprint import pprint as ppt
@@ -26,23 +26,23 @@ token_file = Path("./laads_token")
 # Prints debug information if True
 debug = True
 # Target acquisition time of the image. Most recent if None.
-target_time = dt(year=2016, month=7, day=9, hour=12, minute=36)
+target_time = dt(year=2016, month=6, day=27, hour=20, minute=6)
 # If True, NN-interpolates along the vertical axis for bowtie correction.
-bowtie_correct = True
+bowtie_correct = False
 # Only accept swaths acquired during the day
 day_only = True
 # Select a satellite to query
 satellite = "NP" # NP or J1
 # Short string to identify this domain
-domain_desc = "europe"
+domain_desc = "alps"
 # Pixel location that must be present in the image
-# latlon = (34.43, -86.35) # Huntsville
-# latlon = (.23, -50.07) # Amazon river delta
-# latlon = (36.39, 25.44) # Aegean sea
+#latlon = (34.43, -86.35) # Huntsville
+#latlon = (.23, -50.07) # Amazon river delta
+#latlon = (36.39, 25.44) # Aegean sea
 #latlon = (36.44, -104.97) # Philmont (The West)
-# latlon = (-5.77, 141) # Papua
-# latlon = (24.65, 89.79) # Bangladesh
-latlon = (45.93, 8.32) # Alps
+#latlon = (-5.77, 141) # Papua
+#latlon = (24.65, 89.79) # Bangladesh
+latlon = (47.05, 8.30) # Alps
 
 """
 Get a pkl for the pseudo truecolor in imagery resolution and generate an image.

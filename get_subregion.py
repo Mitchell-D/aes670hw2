@@ -125,4 +125,3 @@ gp.generate_raw_image(
         image_path=region_rgb_path,
         )
 
-

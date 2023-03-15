@@ -191,7 +191,7 @@ def query_product(product_key:str, start_time:dt, end_time:dt,
         Small internal recursive method to aggregate all pages. This dubiously
         trusts that the API won't loop nextPageLinks, but whatever.
         """
-        if debug: print(f"Querying new page: {url}")
+        if debug: print(f"\033[32;1mQuerying new page: \033[34;0m{url}\033[0m")
         result = requests.get(url)
         if result.status_code != 200:
             raise ValueError(f"Invalid query. See response:\n{result.text}")
@@ -205,8 +205,8 @@ def query_product(product_key:str, start_time:dt, end_time:dt,
         return this_result + recursive_page_get(next_page)
     return recursive_page_get(url)
 
-def download(target_url:str, dest_dir:Path, token_file:Path,
-             replace:bool=False, debug=False):
+def download(target_url:str, dest_dir:Path, raw_token:str=None,
+             token_file:Path=None, replace:bool=False, debug=False):
     """
     Download a file with a wget subprocess invoking an authorization token.
 
@@ -218,18 +218,25 @@ def download(target_url:str, dest_dir:Path, token_file:Path,
     :@param token_file: ASCII text file containing only a LAADS DAAC API token,
             which can be generated using the link above.
     """
-    result = requests.get(target_url, stream=True, headers={
-        'Authorization': 'Bearer {token_file.open('r').read()}'})
-    token = token_file.open("r").read()
+    if not raw_token and not token_file:
+        raise ValueError(f"You must provide a raw_token string or token_file.")
+
+    if token_file:
+        token = token_file.open("r").read().strip()
+    else:
+        token = raw_token
+    #result = requests.get(target_url, stream=True, headers={
+    #    'Authorization': k'Bearer {token}'})
     dest_path = dest_dir.joinpath(Path(target_url).name)
     if dest_path.exists():
         if not replace:
             raise ValueError(f"File exists: {dest_path.as_posix()}")
         dest_path.unlink()
     command = f"wget -e robots=off -np - -nH --cut-dirs=4 {target_url}" + \
-            f' --header "Authorization: Bearer {token.strip()}"' + \
+            f' --header "Authorization: Bearer {token}"' + \
             f" -P {dest_dir.as_posix()}"
-    if debug: print(f"Downloading {target_url}")
+    if debug:
+        print(f"\033[33;7mDownloading\033[0m \033[34;1;4m{target_url}\033[0m")
     stdout, stderr = Popen(shlex.split(command),
                            stdout=PIPE, stderr=PIPE).communicate()
     return dest_path

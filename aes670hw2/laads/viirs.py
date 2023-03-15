@@ -81,10 +81,10 @@ def get_viirs_sunsat(geoloc_file:Path, debug=False):
     """
     if debug: print(f"Loading sun/sat/px: {geoloc_file.as_posix()}")
     glnc = nc.Dataset(geoloc_file, 'r').groups["geolocation_data"]
-    solar_zen = glnc["solar_zenith"][:]
-    solar_azi = glnc["solar_azimuth"][:]
-    sensor_zen = glnc["sensor_zenith"][:]
-    sensor_azi = glnc["sensor_azimuth"][:]
+    solar_zen = glnc["solar_zenith"][::-1,::-1]
+    solar_azi = glnc["solar_azimuth"][::-1,::-1]
+    sensor_zen = glnc["sensor_zenith"][::-1,::-1]
+    sensor_azi = glnc["sensor_azimuth"][::-1,::-1]
     return (solar_zen, solar_azi, sensor_zen, sensor_azi)
 
 def get_viirs_geoloc(geoloc_file:Path, debug=False):
@@ -98,9 +98,9 @@ def get_viirs_geoloc(geoloc_file:Path, debug=False):
     """
     if debug: print(f"Loading geolocation: {geoloc_file.as_posix()}")
     glnc = nc.Dataset(geoloc_file, 'r').groups["geolocation_data"]
-    height = glnc["height"][:]
-    latitude = glnc["latitude"][:]
-    longitude = glnc["longitude"][:]
+    height = glnc["height"][::-1,::-1]
+    latitude = glnc["latitude"][::-1,::-1]
+    longitude = glnc["longitude"][::-1,::-1]
     return (latitude, longitude, height)
 
 def get_viirs_data(l1b_file:Path, bands:tuple, debug=False, mask=False):
@@ -132,14 +132,14 @@ def get_viirs_data(l1b_file:Path, bands:tuple, debug=False, mask=False):
             "file_time":parse_viirs_time(l1b_file),
             "day_night":str(gran.DayNightFlag),
             "bands":keys,
-            "qflags":{ k:observation.variables[f"{k}_quality_flags"][:]
+            "qflags":{ k:observation.variables[f"{k}_quality_flags"][::-1,::-1]
                       for k in keys }
             }
 
     # Watts/meter^2/steradian/micrometer
     all_bands = []
     for k in keys:
-        data = observation.variables[k][:]
+        data = observation.variables[k][::-1,::-1]
         if mask:
             data = np.ma.masked_where(info["qflags"][k]!=0, data)
         all_bands.append(data)
@@ -169,9 +169,9 @@ def download_viirs_granule(
     :@param dest_dir: Destination directory to download netCDF files into.
     :@param token_file: ASCII text file containing only a LAADS DAAC token,
             which can be generated using the link above.
-    :@param bands: Tuple of bands to limit the array returned by this method
-            to, which is necessary since a contiguous array of multiple
-            granules can be very, very big.
+    :@param bands: Tuple of integer band numbers to limit the array returned
+            by this method to, which is necessary since a contiguous array of
+            multiple granules can be very, very big.
 
      - Optional Parameters -
     :@param target_time: Approximate acquisition time of file to download. If
@@ -227,14 +227,14 @@ def download_viirs_granule(
 
 
     # Download the data and geometry files
-    data_file = laads.download(data_link, dest_dir, token_file,
+    data_file = laads.download(data_link, dest_dir, token_file=token_file,
                                replace=replace, debug=debug)
     data, info = get_viirs_data(l1b_file=data_file, bands=bands, mask=mask,
                                 debug=debug)
     sunsat = None
     geo = None
     if include_geo or include_sunsat:
-        geo_file = laads.download(geo_link, dest_dir, token_file,
+        geo_file = laads.download(geo_link, dest_dir, token_file=token_file,
                                   replace=replace, debug=debug)
         if include_geo:
             geo = get_viirs_geoloc(geoloc_file=geo_file, debug=debug)
@@ -281,10 +281,10 @@ def download_viirs_swath(
     geos = []
     for v in viirs_urls:
         arrays.append(get_viirs_data(laads.download(
-            v["downloadsLink"], dest_dir, token_file,
+            v["downloadsLink"], dest_dir, token_file=token_file,
             replace=replace, debug=debug), bands=bands))
         geos.append(get_viirs_geoloc(laads.download(
-            v["geoLink"], dest_dir, token_file,
+            v["geoLink"], dest_dir, token_file=token_file,
             replace=replace, debug=debug)))
 
     data = np.concatenate(arrays, axis=0)
