@@ -1,5 +1,6 @@
 """
 Helper script to re-download and subgrid the image for this assignment.
+Re-downloads and regrids region pickle in the standard format.
 """
 import pickle as pkl
 import numpy as np
@@ -28,6 +29,7 @@ bands = (
         14, # 8.55um MIR; surface emissivity, 8.5-10.7 for cloud phase
         12, # 3.70um SWIR; small ice crystals more reflective, fire detection
         10, # 1.61um NIR; Snow/ice absorb, liquid water reflects.
+        9,  # 1.38um NIR; Cirrus detection (atmospheric abs band)
         7,  # 0.865um NIR; Strong chloryphyl reflection.
         5,  # 0.672 VIS; Red
         4,  # 0.555 VIS; Green

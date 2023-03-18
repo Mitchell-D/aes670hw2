@@ -12,9 +12,14 @@ class PixelCat:
     """
     Wrapper class for supervised and unsupervised classification of arrays.
 
-    Initialized with an immutable set of arrays and labels. Any enhancements
+    Initialized with an set of arrays and labels. Any enhancements
     must be done as pre or post processing, but show_rgb() allows for
     temporary visualization of provided arrays with a rgb recipe.
+
+    Several methods enable you to select a parameter value for a band
+    or set of bands. If you generate a new array with a method like
+    pick_linear_contrast(), you can subsequently add it as a new 'band'
+    with set_band()
     """
     def __init__(self, arrays:list, bands:list):
         """
@@ -26,7 +31,7 @@ class PixelCat:
         assert all([ X.shape == arrays[0].shape for X in arrays ])
         assert len(set(bands)) == len(arrays) and len(arrays)
         self._arrays = arrays
-        self._bands = bands
+        self._bands = list(bands)
         self._shape = arrays[0].shape
 
     def band(self, band:str):
@@ -76,6 +81,7 @@ class PixelCat:
         arrays, so unless a recipe is provided
         """
         # Verify 3 valid band labels were provided in the list
+        print(bands, self._bands)
         assert len(bands) == 3 and all([ b in self._bands for b in bands ])
         # Verify that if recipes were provided, they are 3 functions.
         assert not recipes or len(recipes) == 3 and \
@@ -83,7 +89,7 @@ class PixelCat:
         recipes = recipes if recipes else [ lambda m:m for i in range(3) ]
         if debug: print(f"Generating RGB using bands {bands}")
         RGB = np.dstack([ recipes[i](self.band(bands[i]))
-                          for i in range(len(bands))])
+                          for i in range(len(bands)) ])
         if show:
             gt.quick_render(RGB)
         return RGB
@@ -110,6 +116,35 @@ class PixelCat:
         self._arrays.append(array)
         self._bands.append(band)
         return None
+
+    def get_filter(self, band:str, low_pass:bool=True):
+        """
+        Apply a low-pass (by default) or high-pass filter to the band array
+        and return an identically-shaped result normalized to [0,1].
+
+        :return: User-selected radius value and filtered array as a 2-tuple
+        """
+        # Get phase space image
+        P = enhance.dft2D(
+                np.copy(self.band(band)),
+                inverse=False,
+                use_scipy=True,
+                )
+        # Filter according to user specification
+        my_filter = lambda X,v: enhance.norm_to_uint(np.abs(
+            enhance.dft2D(enhance.radius_mask(
+                    X, radius=int(((v+1)/256)*X.shape[0]),
+                    fill=0, true_inside=low_pass),
+                inverse=True, use_scipy=True)), 256, np.uint8)
+        # Get a scaled filter value from the user
+        user_value = gt.trackbar_select(P, my_filter)
+        Q = enhance.radius_mask(P, int(((user_value+1)/256)*P.shape[0]),
+                                fill=0, true_inside=low_pass)
+        Y = enhance.linear_gamma_stretch(np.abs(enhance.dft2D(
+                Q, inverse=True, use_scipy=True)))
+        # Filter the phase array with the user-selected radius value.
+        return (int(((user_value+1)/256)*P.shape[0]), my_filter(P, user_value))
+
 
 if __name__=="__main__":
     debug=True

@@ -43,12 +43,18 @@ def query_viirs_l1b(product_key:str, start_time:dt, end_time:dt, add_geo=True,
     :@param product_key: One of the listed VIIRS l1b product keys
     :@param start_time: Inclusive start time of the desired range. Only files
             that were acquired at or after the provided time may be returned.
-    :@param start_time: Inclusive end time of the desired range. Only files
+    :@param end_time: Inclusive end time of the desired range. Only files
             that were acquired at or before the provided time may be returned.
+    :@param add_geo: If True, queries LAADS for the geolocation product and
+            includes the download link of the result
     :@param archive: Some products have multiple archives, which seem to be
             identical. If archive is provided and is a validarchive set,
             uses the provided value. Otherwise defualts to defaultArchiveSet
             as specified in the product API response.
+
+    :@return: A list of dictionaries containing the aquisition time of the
+            granule, the data granule download link, and optionally the
+            download link of the geolocation file for the granule.
     """
     if product_key not in valid_products:
         raise ValueError(f"Product key must be one of: {valid_products}")
@@ -329,6 +335,81 @@ def generate_viirs_pkl(
     del gran
     gc.collect()
     return pkl_path
+
+def get_viirs_args():
+    """
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-H", "--hour", dest="hour", type=str,
+                        help="UTC hour of observation. If no day is " + \
+                                "provided, defaults to today.",
+                        default=None)
+    parser.add_argument("-M", "--minute", dest="minute", type=str,
+                        help="Minute of observation. If no hour is "+ \
+                                "provided, this value is ignored.",
+                        default=None)
+    parser.add_argument("-D", "--day", dest="day", type=str,
+                        help="Day in YYYYMMDD format",
+                        default=None)
+    parser.add_argument("-r", "--recipe", dest="recipe", type=str,
+                        help="Imagery recipe to use; defaults to truecolor",
+                        default="truecolor")
+    parser.add_argument("--center", dest="center", type=str,
+                        help="lat/lon center, formatted '\d+.\d+,\d+.\d+",
+                        default=None)
+    parser.add_argument("--aspect", dest="aspect", type=str,
+                        help="Grid aspect ratio, formatted '\d+.\d+,\d+.\d+",
+                        default=None)
+    parser.add_argument("--sat", dest="sat", type=str,
+                        help="Satellite to query data from",
+                        default="noaa-goes16")
+    raw_args = parser.parse_args()
+
+    try:
+        assert all([ arg==None for arg in
+                    (raw_args.center, raw_args.aspect, raw_args.recipe)])
+    except:
+        raise ValueError("Grid selection or location arguments " + \
+                "aren't supported yet.")
+
+    """ Parse any time arguments """
+    if not raw_args.hour is None:
+        hour = int(raw_args.hour)%24
+        # Only regard the minutes argument if an hour is provided
+        target_tod = td( hours=hour,
+                minutes=0 if raw_args.minute is None \
+                        else int(raw_args.minute)%60)
+        # If no day is provided, default to the last occurance of the
+        # provided time.
+        if raw_args.day is None:
+            target_time = (dt.utcnow()-target_tod).replace(
+                    hour=0, minute=0, second=0, microsecond=0)+target_tod
+        # If a day and
+        else:
+            try:
+                target_day = dt.strptime(raw_args.day, "%Y%m%d")
+                target_time = target_day+target_tod
+            except:
+                raise ValueError("Target day must be in YYYYmmdd format.")
+    # Only accept a day argument if an hour is also provided
+    # If no day argument or hour argument is provided, default to now.
+    else:
+        if raw_args.day is None:
+            target_time = dt.utcnow()
+        else:
+            raise ValueError("You cannot specify a day without " + \
+                    "also specifying an hour.")
+
+    """ Parse any grid arguments """
+    grid_center = None
+    grid_aspect = None
+    if raw_args.center and raw_args.aspect:
+        grid_center = tuple(map(float, raw_args.center.split(",")))
+        grid_aspect = tuple(map(float, raw_args.aspect.split(",")))
+    elif raw_args.center or raw_args.aspect:
+        raise ValueError("You must provide both a center and an aspect ratio")
+
+    return raw_args.recipe, target_time, grid_center, grid_aspect
 
 if __name__=="__main__":
     pass

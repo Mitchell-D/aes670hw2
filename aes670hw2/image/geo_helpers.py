@@ -54,8 +54,11 @@ def get_geo_range(latlon:np.ndarray, target_latlon:tuple, dx_px:int,dy_px:int,
             usually rendered as "downward", or decreasing longitude
     :@param from_center: If True, target_latlon describes the center point of
             a rectangle with width dx_px and height dy_px.
-    :@param boundary_error: If True, raises a custom BoundaryError if the
-            requested pixel boundary extends outside of the latlon domain.
+    :@param boundary_error: If True, raises a ValueError if the requested pixel
+            boundary extends outside of the latlon domain. Otherwise returns
+            a boundary at the closest valid pixel. This means if boundary_error
+            is False and the grid overlaps a boundary, the returned array will
+            not have the requested shape.
 
     :@return: Nested tuples of coordinates like ((ymin, ymax), (xmin, xmax))
             for the minimum and (non-inclusive) maximum of the requested

@@ -8,6 +8,8 @@ from datetime import datetime as dt
 from PIL import Image
 from pprint import pprint as ppt
 
+from aes670hw2 import enhance
+
 
 def png_to_np(image_file:Path, debug=False):
     """
@@ -32,8 +34,7 @@ def get_category_series(X:np.ndarray, cat_count:int, category_names:list=None,
 
     Useful information on current selections are printed if debug=True.
 
-    :@param X: (M,N,3) RGB array. The array must strictly be 3d RGB, so if
-            you're working with a grayscale (2d) array, duplicate along axis 2.
+    :@param X: (M,N,3) RGB array or (M,N) greyscale to choose categories for.
     :@param cat_count: Number of categories to ask the user to populate.
     :@param category_names: Rather than asking the user for category names
             after they select them,
@@ -43,13 +44,16 @@ def get_category_series(X:np.ndarray, cat_count:int, category_names:list=None,
     :@param debug: if True, prints useful information to the terminal as the
             user selects pixels.
     """
+    # Stack grayscale images into a (M,N,3) RGB
+    if len(X.shape)==2:
+        X = np.dstack([X for i in range(3)])
+    if category_names and not len(set(category_names))==cat_count:
+        raise ValueError(f"If category names are provided, there must be " + \
+                f" the same number of categories as cat_count ({cat_count})")
     color_loop = itertools.cycle([
         color[:3] for color in itertools.permutations((256, 256, 128, 0))
         ])
     cats = []
-    if category_names and not len(set(category_names))==cat_count:
-        raise ValueError(f"If category names are provided, there must be " + \
-                f" the same number of categories as cat_count ({cat_count})")
     for i in range(cat_count):
         new_cat = { "pixels":None, "name":None, "color":None}
         if not category_names is None:
@@ -68,8 +72,8 @@ def get_category_series(X:np.ndarray, cat_count:int, category_names:list=None,
                     continue
         new_cat["name"] = cname
         new_cat["color"] = next(color_loop)
-        new_cat["pixels"] = get_category(X, fill_color=new_cat["color"],
-                              show_pool=show_pool, debug=debug)
+        new_cat["pixels"] = set(get_category(X, fill_color=new_cat["color"],
+                              show_pool=show_pool, debug=debug))
         cats.append(new_cat)
     return cats
 
@@ -92,11 +96,15 @@ def get_category(X:np.ndarray, fill_color:tuple=(0,255,255),
     Xnew = np.copy(X)
     coords = []
     fill_color = np.asarray(fill_color)
+
     # Calculate RGB standard deviation by taking the sum of all bands' stddevs.
     array_std = sum([ np.std(X[:,:,i]) for i in range(X.shape[2]) ])
+    color_avg_invert = lambda pixels: [ 255-pval for pval in
+                                       enhance.color_average(pixels) ]
     def mouse_callback(event,x,y,flags,param):
         if event == cv.EVENT_LBUTTONDOWN:
             coords.append((y, x))
+            fill_color = color_avg_invert([ X[y,x,:] for y,x in coords ])
             Xnew[y,x,:] = fill_color
             std = 0
             for i in range(X.shape[2]):
@@ -129,7 +137,7 @@ def get_category(X:np.ndarray, fill_color:tuple=(0,255,255),
 
     return list(coords)
 
-def trackbar_select(X:np.ndarray, func, label:"", resolution:int=256,
+def trackbar_select(X:np.ndarray, func, label="", resolution:int=256,
                     debug=False):
     """
     Use a trackbar to select an integer value in [0,255] which is used to
@@ -143,7 +151,6 @@ def trackbar_select(X:np.ndarray, func, label:"", resolution:int=256,
     """
     wname = "catselect"
     # make a new copy of X that can be modified
-    Xnew = np.copy(X)
     if not type(func)==type(lambda m:1):
         raise ValueError(f"func argument must be a function with 2 " + \
                 "arguments for an array X and value a in [0,resolution-1]")
@@ -155,20 +162,25 @@ def trackbar_select(X:np.ndarray, func, label:"", resolution:int=256,
         """
         Applies user-defined function to Xnew with the user's selected value.
         """
+        nonlocal selection
         selection = user_value
-        cv.imshow(wname, func(np.copy(X), selection))
+        tmp_X = np.copy(X)
+        print(tmp_X.shape, selection)
+        rendered = func(tmp_X, selection)
+        cv.imshow(wname, rendered)
 
+    init_val = 0
     cv.namedWindow(wname)
-    cv.createTrackbar(label, wname, 0, resolution-1,
-                      lambda v: callback(v,selection))
-    cv.imshow("catselect", Xnew)
+    cv.createTrackbar(label, wname, init_val, resolution-1,
+                      lambda v: callback(v))
+    #Xnew = callback(init_val)
+    #cv.imshow("catselect", Xnew)
 
-    #cv.waitKey(1) & 0xFF == ord("q"):
-    #    break
-    cv.waitKey(0)
-    cv.destroyAllWindows()
-    print(selection)
-    return selection
+    while True:
+        if cv.waitKey(1) & 0xFF == ord("q"):
+            cv.destroyAllWindows()
+            print(selection)
+            return selection
 
 def region_select(X:np.ndarray, show_selection:bool=False, debug=False):
     """
@@ -205,7 +217,7 @@ def quick_render(X:np.ndarray):
     cv.namedWindow("quick render")
     print("\033[1m\033[91mPress 'q' key to exit\033[0m")
     while True:
-        cv.imshow("quick render", X)
+        cv.imshow("quick render", X[:,:,::-1])
         if cv.waitKey(1) & 0xFF == ord("q"):
             break
     cv.destroyAllWindows()
@@ -222,6 +234,8 @@ def show_pixel_pool(pixels:np.ndarray, debug=False):
     if not len(pixels):
         if debug: print(f"No pixels provided; not showing pixel pool.")
         return
+    if pixels.shape[0]==1:
+        pixels = np.concatenate((pixels, pixels), axis=0)
     side_length = int((pixels.shape[0])**(1/2) + 1)
     px_count = side_length**2
     pixels = np.concatenate((pixels,pixels[:px_count-len(pixels)]), axis=0)
@@ -246,6 +260,7 @@ def label_at_index(X:np.ndarray, location:tuple, text:str=None, size:int=11,
     Mark an index with an 'X', and optionally include a text label.
 
     :@param X: (M,N,3) RGB numpy array on which to rasterize the label.
+    :@param location: (center y, center x) integer 2-tuple
     :@param text: Text to label the location (NOT IMPLEMENTED)
     :@param size: Vertical and horizontal pixel size of the 'X' mark.
     :@param text_offset: Pixel offset of text corner (NOT IMPLEMENTED)

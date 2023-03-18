@@ -1,17 +1,196 @@
 import numpy as np
+import math
 from scipy.interpolate import interp1d
+from scipy.signal import convolve2d
+from scipy.fft import fft,ifft
+#from numba import jit
+
+def visualize_fourier(X:np.ndarray):
+    """
+    """
+    phase = fft2(X)
+    return np.log10(np.real(phase * phase.conjugate()))
+
+def radius_mask(X:np.ndarray, radius:float=None, center:tuple=None,
+                  true_inside:bool=True, fill=None):
+    """
+    Applies a radius (high-pass/low-pass) to X centered on and returns a
+    reconstructed version of the array.
+
+    :@param X: 2d array of brightnesses to apply filter to.
+    :@param radius: filter radius in pixels from center=(y,x).
+    :@param center: integer 2-tuple like (y,x) of the center pixel in frequency
+            space of the filter.
+    :@param true_inside: If True (by default), applies low-pass filter (ie)
+            frequencies inside the radius are kept. Otherwise applies a
+            high-pass filter.
+    """
+    print(radius)
+    cy, cx = center if center else map(lambda v: int(v/2), X.shape)
+    radius = min(cx,cy,X.shape[0]-cy,X.shape[1]+cx) \
+            if radius is None else radius
+    # cool static constructor
+    y_coords, x_coords = np.ogrid[:X.shape[0], :X.shape[1]]
+    R = np.sqrt( (x_coords-cx)**2 + (y_coords-cy)**2 )
+    mask = R > radius if true_inside else R < radius
+    if fill is None:
+        return mask
+    X[mask] = fill
+    return X
+
+def dft2D(X:np.ndarray, inverse:bool=False, use_scipy:bool=False):
+    if use_scipy:
+        row_pass = np.stack([
+            (fft,ifft)[inverse](X[i,:])
+            for i in range(X.shape[0])
+            ], axis=0)
+        col_pass = np.stack([
+            (fft,ifft)[inverse](row_pass[:,j])
+            for j in range(row_pass.shape[1])
+            ], axis=1)
+        return col_pass
+
+    row_pass = np.stack([discrete_fourier(X[i,:], inverse=inverse)
+                          for i in range(X.shape[0])], axis=0)
+    col_pass = np.stack([discrete_fourier(row_pass[:,j], inverse=inverse)
+                          for j in range(row_pass.shape[1])], axis=1)
+    return col_pass
+
+def discrete_fourier(X:np.ndarray, inverse:bool=False, use_scipy:bool=False):
+    """
+    """
+    # radix-2
+    X = np.array(X, dtype=float)
+    N = X.shape[0]
+    assert len(X.shape)==1
+    #if N==1:
+    if N<=2:
+        X = np.asarray(X, dtype=float)
+        n = np.arange(X.shape[0])
+        k = n.reshape((X.shape[0],1))
+        return np.dot(np.exp([-2j,2j][inverse]*np.pi*k*n/X.shape[0]), X)
+    odd_phase = discrete_fourier(X[1::2])
+    even_phase = discrete_fourier(X[::2])
+    phasor = np.exp([-2j, 2j][inverse]*np.pi*np.arange(N)/N)
+    #get_phase = lambda k: np.exp(phasor, k)
+    #Z = get_phase(odd_phase) # ?
+    #Y = np.concatenate([ even_phase + Z, even_phase-Z ])
+    #return Y/N if inverse else Y
+    Y = np.concatenate([ even_phase + phasor[:int(N/2)] * odd_phase,
+                        even_phase + phasor[int(N/2):] * odd_phase ])
+    return Y
+
+def naive_dft(X):
+    n,m = X.shape
+    w = math.e**(-2j*math.pi)
+    Y = np.zeros_like(X)
+    for k in range(m):
+        for l in range(n):
+            for j in range(n):
+                row = X[j,:]
+                row_const = w**(k*j/n)
+                for i in range(m):
+                    Y[k,l] = X[j,i] * w**(l*i/m) * row_const
+    return Y/(m*n)
+
+def multi_edge(X:np.ndarray, sequence:bool=False):
+    """
+    Applies 4 edge detection kernels and returns an array of the total spatial
+    gradient along each axis. Optionally apply the kernels as a sequence.
+    """
+    assert len(X.shape)==2 and all([ length>2 for length in X.shape ])
+    kernels = [[[-1,-1,-1], # Horizontal edge
+                [ 0, 0, 0],
+                [ 1, 1, 1]],
+               [[-1, 0, 1], # Vertical edge
+                [-1, 0, 1],
+                [-1, 0, 1]],
+               [[ 0, 1, 1], # Back diagonal
+                [-1, 0, 1],
+                [-1,-1, 0]],
+               [[ 1, 1, 0], # Forward diagonal
+                [ 1, 0,-1],
+                [ 0,-1,-1]]]
+    if sequence:
+        for k in kernels:
+            X = convolve2d(X, k, mode="valid")
+        grad = X
+    else:
+        convolutions = []
+        for k in kernels:
+            convolutions.append(convolve2d(X, k, mode="valid"))
+        grad = np.sqrt(np.sum(np.dstack(
+            [ convolve2d(X, k, mode="valid")**2 ]), axis=2))
+    return grad
+
+def sobel_edge(X:np.ndarray):
+    """
+    Applies the Sobel algorithm edge detection kernels to the provided
+    array and returns the corresponding diagonal gradient array as
+    a 2d array with 2 fewer elements on each axis (no fill values).
+    """
+    assert len(X.shape)==2 and all([ length>2 for length in X.shape ])
+    grad = np.zeros_like(X[:-2,:-2])
+    kernel1 = np.asarray([
+        [ 1, 2, 1],
+        [ 0, 0, 0],
+        [-1,-2,-1],
+        ])
+    kernel2 = np.asarray([
+        [-1, 0, 1],
+        [-2, 0, 2],
+        [-1, 0, 1],
+        ])
+    for i in range(X.shape[0]-2):
+        for j in range(X.shape[1]-2):
+            del1 = np.sum(X[i:i+3,j:j+3]*kernel1)
+            del2 = np.sum(X[i:i+3,j:j+3]*kernel2)
+            grad[i,j] = math.sqrt(del1**2 + del2**2)
+    return grad
+
+def roberts_edge(X:np.ndarray):
+    """
+    Applies roberts operator to a 2d array, which calculates the "diagonal"
+    gradients of pixels and returns a 2d array with one less element on
+    each axis due to forward differencing.
+    """
+    grad = np.zeros_like(X[:-1,:-1])
+    assert len(X.shape)==2 and all([ length>1 for length in X.shape ])
+    for i in range(X.shape[0]-1):
+        for j in range(X.shape[1]-1):
+            del1 = X[i,j]-X[i+1, j+1] # Back diagonal
+            del2 = X[i+1,j]-X[i, j+1] # Forward diagonal
+            grad[i,j] = math.sqrt(del1**2 + del2**2)
+    return grad
+
+def color_average(pixels):
+    """
+    Given a list of RGB pixels, calculates the average along each color axis.
+    """
+    return [ sum([p[i] for p in pixels])/len(pixels) for i in range(3) ]
 
 def linear_gamma_stretch(X:np.ndarray, lower:float=None, upper:float=None,
-                  gamma:float=1):
+                         gamma:float=1, report_min_and_range:bool=False):
     """
     Linear-normalize pixel values between lower and upper bound, then apply
     gamma stretching if an argument is provided.
 
-    Returns an array of float values in range [0, 1]
+    By default, normalizes the full data range to [0,1]
+
+    :@param X: any numpy ndarray or masked array to normalize
+    :@param lower: lower bound to normalize between; This determines the
+            value in data coordinates that will be considered 'zero'
+    :@param upper: upper bound to normalize between;
+    :@param gamma: X^(1/gamma) exponent.
+    :@param report_min_and_range: if True, returns a 3-tuple containing
+            the minimum value and the range in original dataset units.
+
+    :@return: An array of float values in range [0, 1] normalized in bounds.
     """
     lower = lower if not lower is None else np.amin(X)
     upper = upper if not upper is None else np.amax(X)
-    return ((X-lower)/(upper-lower))**(1/gamma)
+    if not report_min_and_range:
+        return ((X-lower)/(upper-lower))**(1/gamma)
 
 def gamma(X:np.ndarray, gamma, a=1.):
     """
@@ -77,7 +256,9 @@ def get_pixel_counts(X:np.ndarray, nbins, debug=False):
             bin_size indicating the bin size in data coordinates, and a float
             value Xmin indicating the floor of the fist bin in data coords.
     """
-    X = X.compressed() # Get all unmasked values
+    #X = X.compressed() if isinstance(X, np.ma.MaskedArray) else X.flatten()
+    # Get all unmasked values
+    X = X.compressed() if isinstance(X, np.ma.MaskedArray) else X
     Xmin = np.amin(X)
     Xmax = np.amax(X)
     bin_size = (Xmax-Xmin)/nbins
