@@ -81,7 +81,8 @@ if __name__=="__main__":
     #latlon = (-5.77, 141) # Papua
     #latlon = (24.65, 89.79) # Bangladesh
     #latlon = (45.93, 8.32) # Alps
-    latlon = (-10,-60) # Amazon
+    #latlon = (-10,-60) # Amazon
+    latlon = (16.963, 121.115)# Banaue, Phillipines; UTC+8
     pkl_path = Path("data/pkls/ez_naturalcolor.pkl")
     fig_dir = Path("figures/test")
     #xres, yres = (2096, 1179)
@@ -89,7 +90,7 @@ if __name__=="__main__":
     dx = int(xres/2)
     dy = int(yres/2)
     #target_time=dt.utcnow()
-    target_time=dt(year=2018, month=9, day=5, hour=14)
+    target_time=dt(year=2019, month=4, day=8, hour=18)
     file_template = "{atime}_{satellite}_naturalcolor.png"
     satellite = "NP"
 

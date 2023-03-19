@@ -28,11 +28,16 @@ class PixelCat:
         """
         # Arrays must be uniformly-shaped, and each one must have a unique
         # band label.
-        assert all([ X.shape == arrays[0].shape for X in arrays ])
+        assert all([ X.shape==arrays[0].shape and len(arrays[0].shape)==2
+                    for X in arrays ])
         assert len(set(bands)) == len(arrays) and len(arrays)
         self._arrays = arrays
         self._bands = list(bands)
         self._shape = arrays[0].shape
+
+    @property
+    def bands(self):
+        return self._bands
 
     def band(self, band:str):
         """ Returns the array associated with the provided band label """

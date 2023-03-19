@@ -99,7 +99,7 @@ def get_fire_passes(start_time:dt, end_time:dt, latlon:tuple, buffer_dir:Path,
                 pc_1k = PixelCat(list(map(np.copy, data_1k)), fire_bands)
                 pc_1k.set_band(data_1k[1]-data_1k[0], "IRdiff")
                 rgb_fire = pc_1k.get_rgb(
-                        bands=["VIS", "IRdiff", "LWIR"],
+                        bands=[ "LWIR", "IRdiff", "VIS" ],
                         recipes=[
                             lambda X: enhance.norm_to_uint(X, 256, np.uint8)
                             for i in range(3)],
