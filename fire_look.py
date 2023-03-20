@@ -1,5 +1,6 @@
 from pathlib import Path
 from pyhdf.SD import SD, SDC
+import pickle as pkl
 import numpy as np
 from pprint import pprint as ppt
 from datetime import datetime as dt
@@ -13,10 +14,11 @@ from aes670hw2 import guitools
 from aes670hw2 import FireDetector
 from aes670hw2 import PixelCat
 
-def get_fire_passes(start_time:dt, end_time:dt, latlon:tuple, buffer_dir:Path,
-                    satellite="terra", token_file=Path("laads_token"),
-                    width_px:int=512, height_px:int=512, remove_hdfs:bool=True,
-                    gen_nir_sample:bool=False, debug=False):
+def get_fire_passes(
+        start_time:dt, end_time:dt, latlon:tuple, buffer_dir:Path,
+        satellite="terra", token_file=Path("laads_token"), width_px:int=512,
+        height_px:int=512, remove_hdfs:bool=True, gen_nir_sample:bool=False,
+        pkl_path:Path=None, debug=False):
     """  """
     assert satellite.lower() in {"terra", "aqua"}
     products = modis.query_modis_l2(product_key=modis.sat_to_l2key(satellite),
@@ -90,6 +92,11 @@ def get_fire_passes(start_time:dt, end_time:dt, latlon:tuple, buffer_dir:Path,
                        for A in data[:3]]
             geo = geo[yrange[0]:yrange[1],xrange[0]:xrange[1],:]
 
+            if not pkl_path is None:
+                with pkl_path.open("wb") as pklfp:
+                    print(f"Generating region pickle at {pkl_path.as_posix()}")
+                    pkl.dump((data_1k, info, geo), pklfp)
+
             # New center y,x for the subgrid
             yctr,xctr = geo_helpers.get_closest_pixel(geo, latlon)
 
@@ -150,10 +157,13 @@ def get_fire_passes(start_time:dt, end_time:dt, latlon:tuple, buffer_dir:Path,
 if __name__=="__main__":
     debug = True
     buffer_dir = Path("figures/fire_look")
+    pkl_path = Path("data/pkls/20180904_amazon_fire.pkl")
     get_fire_passes(
             satellite="aqua",
-            start_time=dt(year=2018, month=9, day=3, hour=1),
-            end_time=dt(year=2018, month=9, day=5, hour=22),
+            #start_time=dt(year=2018, month=9, day=3, hour=1),
+            #end_time=dt(year=2018, month=9, day=5, hour=22),
+            start_time=dt(year=2018, month=9, day=4, hour=17),
+            end_time=dt(year=2018, month=9, day=4, hour=18),
             latlon=(-10,-60),
             #latlon=(47.05,8.3),
             #latlon=(38.07,-112.06),
@@ -161,5 +171,6 @@ if __name__=="__main__":
             buffer_dir=buffer_dir,
             gen_nir_sample=True,
             remove_hdfs=False,
+            pkl_path=pkl_path,
             debug=debug
             )

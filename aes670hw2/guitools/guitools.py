@@ -120,7 +120,7 @@ def get_category(X:np.ndarray, fill_color:tuple=(0,255,255),
     print("\033[1m\033[91mPress 'q' key to exit.\033[0m")
     print("\033[1m\033[91mPress 'x' key to cancel previous pixel.\033[0m")
     while True:
-        cv.imshow('catselect', Xnew)
+        cv.imshow('catselect', Xnew[:,:,::-1])
         key = cv.waitKey(1) & 0xFF
         if key == ord("q"):
             break

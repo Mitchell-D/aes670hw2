@@ -1,4 +1,4 @@
-
+""" Helper class with gui methods for pixel classification tasks. """
 from dataclasses import dataclass
 import pickle as pkl
 from pathlib import Path
@@ -55,6 +55,16 @@ class PixelCat:
                 debug=debug
                 )-100)/slope_scale)
 
+    def pick_band_scale(self, band:str, set_band:bool=False):
+        assert band in self._bands
+        choice = gt.trackbar_select(
+                X=self.band(band),
+                func=lambda X, v: X*v/255
+                )/255
+        if set_band:
+            self.set_band(self.band(band)*choice, band, replace=True)
+        return choice
+
     '''
     def get_cats(bands:list, cat_count:int cat_names:list=None,
                  show_pool=False, debug=False):
@@ -67,16 +77,71 @@ class PixelCat:
         return gt.get_category_series(X=np.dstack(bands), cat_count=cat_count,
                 category_names=cat_names, show_pool=show_pool, debug=debug)
     '''
-
-    def pick_gamma(self, band:str, debug=False):
+    def pick_linear_gamma(self, band:str, gamma_scale=.1, set_band:bool=False,
+                          hist_equalize:bool=False, hist_nbins:int=256,
+                          debug=False):
+        """
+        Choose a gamma value for a single using the gui trackbar selector.
+        :@param band: Band ID string
+        :@param gamma_scale: Scales the sensitivity of the gamma function to
+                trackbar movement.
+        :@param set_band: if True, the PixelCat band will be updated.
+        :@param hist_equalize: If True, histogram-equalizes input before
+                prompting the user for gamma selection.
+        :@param hist_nbins: Number of bins to use if hist_equalize is True
+        """
         assert band in self._bands
-        gamma_scale = 8
-        return gt.trackbar_select(
+        sigmoid = lambda a: 1/(1+m.e**(-a*gamma_scale))
+        if hist_equalize:
+            choice = sigmoid(gt.trackbar_select(
+                    X=self.band(band),
+                    func=lambda X, v: enhance.linear_gamma_stretch(
+                        enhance.histogram_equalize(X, nbins=hist_nbins)[0],
+                        gamma=sigmoid(v-128)),
+                    label=f"Band {band} linear gamma: ",
+                    debug=debug
+                    )-128)
+        else:
+            choice = sigmoid(gt.trackbar_select(
+                    X=self.band(band),
+                    func=lambda X, v: enhance.linear_gamma_stretch(
+                        X, gamma=sigmoid(v-128)),
+                    label=f"Band {band} linear gamma: ",
+                    debug=debug
+                    )-128)
+        if set_band:
+            if hist_equalize:
+                self.set_band(
+                        enhance.linear_gamma_stretch(
+                            enhance.histogram_equalize(
+                                self.band(band), nbins=hist_nbins)[0],
+                            gamma=choice),
+                        band=band, replace=True)
+            else:
+                self.set_band(enhance.linear_gamma_stretch(
+                    self.band(band), choice), band=band, replace=True)
+        return choice
+
+    def pick_gamma(self, band:str, gamma_scale=.25, set_band:bool=False,
+                   debug=False):
+        """
+        Choose a gamma value for a single using the gui trackbar selector.
+        :@param band: Band ID string
+        :@param gamma_scale: Scales the sensitivity of the gamma function to
+                trackbar movement.
+        :@param set_band: if True, the PixelCat band will be updated.
+        """
+        assert band in self._bands
+        choice = (gamma_scale/255)*(1+gt.trackbar_select(
                 X=self.band(band),
                 func=lambda X, v: enhance.gamma(X, (1+v)*(gamma_scale/255)),
                 label=f"Band {band} gamma: ",
                 debug=debug
-                )
+                ))
+        if set_band:
+            self.set_band(enhance.gamma(
+                self.band(band), choice), band=band, replace=True)
+        return choice
 
     def get_rgb(self, bands:list, recipes:list=None, show=True, debug=False):
         """

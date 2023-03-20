@@ -36,9 +36,11 @@ else:
 
 # Convert the image to a numpy (M,N,3) array
 image = gt.png_to_np(image_path)
-image_phase = enhance.dft2D(image, use_scipy=True)
-
+if len(image.shape)==2:
+    image = np.dstack([image for i in range(3)])
+# Do discrete fourier transform on the image
 pc = PixelCat([image[:,:,i] for i in range(3)], ("R", "G", "B"))
+
 low_pass = []
 low_radii = []
 high_pass = []

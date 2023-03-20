@@ -5,6 +5,29 @@ from scipy.signal import convolve2d
 from scipy.fft import fft,ifft
 #from numba import jit
 
+# Kernels recognized by kernel_convolve() method
+kernels = {
+        "horizontal":[[-1,-1,-1], # Horizontal edge
+                      [ 0, 0, 0],
+                      [ 1, 1, 1]],
+        "vertical":[[-1, 0, 1], # Vertical edge
+                    [-1, 0, 1],
+                    [-1, 0, 1]],
+        "diagonal_bck":[[ 0, 1, 1], # Back diagonal
+                        [-1, 0, 1],
+                        [-1,-1, 0]],
+        "diagonal_fwd":[[ 1, 1, 0], # Forward diagonal
+                        [ 1, 0,-1],
+                        [ 0,-1,-1]],
+        "sobel_1":[[ 1, 2, 1],
+                   [ 0, 0, 0],
+                   [-1,-2,-1]],
+        "sobel_2":[[-1, 0, 1],
+                   [-2, 0, 2],
+                   [-1, 0, 1]],
+        }
+
+
 def visualize_fourier(X:np.ndarray):
     """
     """
@@ -93,37 +116,37 @@ def naive_dft(X):
                     Y[k,l] = X[j,i] * w**(l*i/m) * row_const
     return Y/(m*n)
 
+def kernel_convolve(X, kernel_name:str, scipy_mode:str="valid"):
+    """
+    Simple wrapper function on scipy.signal.convolve2d that selects
+    from preconfigured kernels.
+    """
+    if kernel_name not in kernels.keys():
+        raise ValueError(f"Provided kernel name {kernel_name} not one of",
+                         list(kernels.keys()))
+    return convolve2d(X, kernels[kernel_name], mode=scipy_mode)
+
 def multi_edge(X:np.ndarray, sequence:bool=False):
     """
     Applies 4 edge detection kernels and returns an array of the total spatial
     gradient along each axis. Optionally apply the kernels as a sequence.
     """
     assert len(X.shape)==2 and all([ length>2 for length in X.shape ])
-    kernels = [[[-1,-1,-1], # Horizontal edge
-                [ 0, 0, 0],
-                [ 1, 1, 1]],
-               [[-1, 0, 1], # Vertical edge
-                [-1, 0, 1],
-                [-1, 0, 1]],
-               [[ 0, 1, 1], # Back diagonal
-                [-1, 0, 1],
-                [-1,-1, 0]],
-               [[ 1, 1, 0], # Forward diagonal
-                [ 1, 0,-1],
-                [ 0,-1,-1]]]
+    kernel_keys = ("horizontal", "vertical",
+                   "diagonal_bck", "diagonal_fwd")
     if sequence:
-        for k in kernels:
-            X = convolve2d(X, k, mode="valid")
+        for key in kernel_keys:
+            X = convolve2d(X, kernels[key], mode="valid")
         grad = X
     else:
         convolutions = []
-        for k in kernels:
+        for k in [ kernels[key] for key in kernel_keys ]:
             convolutions.append(convolve2d(X, k, mode="valid"))
         grad = np.sqrt(np.sum(np.dstack(
             [ convolve2d(X, k, mode="valid")**2 ]), axis=2))
     return grad
 
-def sobel_edge(X:np.ndarray):
+def sobel_edge(X:np.ndarray, weight:float=1):
     """
     Applies the Sobel algorithm edge detection kernels to the provided
     array and returns the corresponding diagonal gradient array as
@@ -131,16 +154,8 @@ def sobel_edge(X:np.ndarray):
     """
     assert len(X.shape)==2 and all([ length>2 for length in X.shape ])
     grad = np.zeros_like(X[:-2,:-2])
-    kernel1 = np.asarray([
-        [ 1, 2, 1],
-        [ 0, 0, 0],
-        [-1,-2,-1],
-        ])
-    kernel2 = np.asarray([
-        [-1, 0, 1],
-        [-2, 0, 2],
-        [-1, 0, 1],
-        ])
+    kernel1 = np.asarray(kernels["sobel_1"])*weight
+    kernel2 = np.asarray(kernels["sobel_2"])*weight
     for i in range(X.shape[0]-2):
         for j in range(X.shape[1]-2):
             del1 = np.sum(X[i:i+3,j:j+3]*kernel1)
