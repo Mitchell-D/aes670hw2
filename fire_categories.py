@@ -52,7 +52,7 @@ rgb_bands =["IRdiff", "LWIR", "VIS"]
 rgb = pc.get_rgb(
         bands=rgb_bands,
         recipes=[lambda X: enhance.linear_gamma_stretch(X),
-                 lambda X: enhance.linear_gamma_stretch(X),
+                 lambda X: enhance.linear_gamma_stretch(X)*.3,
                  lambda X: enhance.linear_gamma_stretch(X)],
         show=False, debug=debug)
 

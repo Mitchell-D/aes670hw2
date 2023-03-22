@@ -257,6 +257,29 @@ def array_stat(X:np.ndarray):
             "range":np.ptp(X),
             }
 
+def get_heatmap(X:np.ndarray, nbins, debug=False):
+    """
+    Note that the returned heat map is indexed from the 'top left' by
+    the imaginary standard, so the y axis must be flipped before plotting.
+    (Except for imshow, which does this for you)
+
+    :@param X: (M,N,2) array with 2 independent variables
+    :@param nbins: Number of bins to sample from X, or the side length
+            of the returned square array.
+    """
+    X[:,:,0] = linear_gamma_stretch(X[:,:,0])
+    X[:,:,1] = linear_gamma_stretch(X[:,:,1])
+    if len(X.shape)==1:
+        return get_pixel_counts(X, nbins)
+    X = np.dstack((norm_to_uint(X[:,:,0], nbins),
+                   norm_to_uint(X[:,:,1], nbins)))
+    H = np.zeros((nbins, nbins))
+    for i in range(X.shape[0]):
+        for j in range(X.shape[1]):
+            H[ X[i,j,0], X[i,j,1]] += 1
+    return H
+
+
 def get_pixel_counts(X:np.ndarray, nbins, debug=False):
     """
     Returns an integer array with length nbins which depicts the number of

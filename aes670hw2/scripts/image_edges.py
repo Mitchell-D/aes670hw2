@@ -8,6 +8,7 @@ from aes670hw2 import enhance
 from aes670hw2 import guitools as gt
 
 aster_path = Path("data/aster.img")
+#image_template = "edges_{label}.png"
 image_template = "edges_{label}.png"
 
 show_images = True

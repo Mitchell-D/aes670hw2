@@ -36,6 +36,7 @@ plot_spec_default = {
     "borders":True,
     "border_width":0.5,
     "border_color":"black",
+    "cmap":"nipy_spectral",
     "xlabel":"",
     "ylabel":"",
     "cb_orient":"vertical",
@@ -52,6 +53,28 @@ plot_spec_default = {
     "xtick_size":8,
     #"ytick_count":12,
     }
+def plot_heatmap(heatmap:np.ndarray, fig_path:Path=None, vmax=None, show=True,
+                 plot_spec:dict={}):
+    """ """
+    # Merge provided plot_spec with un-provided default values
+    old_ps = plot_spec_default
+    old_ps.update(plot_spec)
+    plot_spec = old_ps
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(heatmap, cmap=plot_spec.get("cmap"), vmax=vmax)
+    cbar = fig.colorbar(
+            im, orientation=plot_spec.get("cb_orient"),
+            label=plot_spec.get("cb_label"), shrink=plot_spec.get("cb_size"))
+    #fig.suptitle(plot_spec.get("title"))
+    ax.set_title(plot_spec.get("title"))
+    ax.set_xlabel(plot_spec.get("xlabel"))
+    ax.set_ylabel(plot_spec.get("ylabel"))
+    if show:
+        plt.show()
+    if not fig_path is None:
+        fig.savefig(fig_path.as_posix(), dpi=plot_spec.get("dpi"),
+                    bbox_inches="tight")
 
 def round_to_n(x, n):
     """
@@ -379,3 +402,4 @@ def geo_scalar_plot(data:np.ndarray, lat:np.ndarray, lon:np.ndarray,
         else:
             plt.show()
     print(f"Generated figure at: {fig_path}")
+
