@@ -29,10 +29,27 @@ kernels = {
 
 
 def visualize_fourier(X:np.ndarray):
+    """ Return the provided array in natural log-scaled phase space """
+    return np.log(1+np.abs(fft2(X)))
+
+def border_mask(X:np.ndarray, cutoff:int, high_freq:bool=True, fill=None):
     """
+    Applies a radius (high-pass/low-pass) to X centered on and returns a
+    reconstructed version of the array.
+
+    :@param X: 2d array of brightnesses to apply filter to.
+    :@param radius: filter radius in pixels from center=(y,x).
+    :@param center: integer 2-tuple like (y,x) of the center pixel in frequency
+            space of the filter.
+    :@param true_inside: If True (by default), applies low-pass filter (ie)
+            frequencies inside the radius are kept. Otherwise applies a
+            high-pass filter.
     """
-    phase = fft2(X)
-    return np.log10(np.real(phase * phase.conjugate()))
+    if high_freq:
+        X[-cutoff:,-cutoff:] = fill
+    else:
+        X[:cutoff,:cutoff] = fill
+    return X
 
 def radius_mask(X:np.ndarray, radius:float=None, center:tuple=None,
                   true_inside:bool=True, fill=None):

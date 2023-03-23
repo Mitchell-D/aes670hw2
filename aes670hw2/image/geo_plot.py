@@ -116,6 +116,7 @@ def plot_lines(domain:np.ndarray, ylines:list, image_path:Path=None,
     # Plot each
     fig, ax = plt.subplots()
     for i in range(len(ylines)):
+        print("showing")
         ax.plot(
                 domain,
                 ylines[i],

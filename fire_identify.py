@@ -29,9 +29,6 @@ pc = PixelCat(
         [ X[::-1,::-1] for X in data],
         ("LWIR", "SWIR", "VIS"))
 pc.set_band(pc.band("SWIR")-pc.band("LWIR"), "IRdiff")
-fd = FireDetector()
-cand_px = fd.get_candidates(
-        pc.band("LWIR"), pc.band("SWIR"), pc.band("VIS")).candidates
 
 """ Get an RGB of the 3 condition bands """
 # RGB recipe selected using fire_categories.py
@@ -46,12 +43,27 @@ rgb = pc.get_rgb(
         #         lambda X: enhance.linear_gamma_stretch(X, gamma=.13) ],
         show=False, debug=debug)
 
-""" Show the pixels identified as fire candidates """
-cand_rgb = enhance.norm_to_uint(np.copy(rgb), 256, np.uint8)
-cand_rgb[cand_px] = np.asarray([255, 255, 255])
-gt.quick_render(cand_rgb)
-gp.generate_raw_image(cand_rgb, figure_dir.joinpath("amazon_fire_FCmask.png"))
+fire_color = np.asarray([255,113,61])
+fd = FireDetector()
+fc_cand_px = fd.get_candidates(
+        pc.band("LWIR"), pc.band("SWIR"), pc.band("VIS")).candidates
 
+""" Show the pixels identified as fire candidates """
+fc_cand_rgb = enhance.norm_to_uint(np.copy(rgb), 256, np.uint8)
+fc_cand_rgb[fc_cand_px] = fire_color
+gt.quick_render(fc_cand_rgb)
+print("Flasse and Ceccato Candidates")
+gt.quick_render(fc_cand_rgb)
+gp.generate_raw_image(fc_cand_rgb, figure_dir.joinpath(
+    "amazon_fc_cand.png"))
+
+""" Validate pixels identified as fire candidates """
+fc_fire_px = fd.test_candidates(fc_cand_px, pc.band("LWIR"),
+                             pc.band("SWIR"), pc.band("VIS"))
+fc_fire_rgb = enhance.norm_to_uint(np.copy(rgb), 256, np.uint8)
+fc_fire_rgb[fc_fire_px] = fire_color
+gp.generate_raw_image(fc_fire_rgb, figure_dir.joinpath(
+    "amazon_fc_fires.png"))
 
 """ Modify thresholds and show the new candidates """
 #'''
@@ -60,15 +72,17 @@ fd.lwir_thresh_lbound = 280
 fd.swir_lwir_diff_lbound = 15
 fd.nir_ref_ubound = .1
 #'''
-cand_px = fd.get_candidates(
+my_cand_px = fd.get_candidates(
         pc.band("LWIR"), pc.band("SWIR"), pc.band("VIS")).candidates
-cand_rgb = enhance.norm_to_uint(np.copy(rgb), 256, np.uint8)
-cand_rgb[cand_px] = np.asarray([255, 255, 255])
-gt.quick_render(cand_rgb)
-gp.generate_raw_image(cand_rgb, figure_dir.joinpath("amazon_fire_mymask.png"))
+my_cand_rgb = enhance.norm_to_uint(np.copy(rgb), 256, np.uint8)
+my_cand_rgb[my_cand_px] = fire_color
+gt.quick_render(my_cand_rgb)
+gp.generate_raw_image(my_cand_rgb, figure_dir.joinpath(
+    "amazon_my_candidates.png"))
 
-cand_px = fd.test_candidates(cand_px, pc.band("LWIR"),
-                             pc.band("SWIR"), pc.band("VIS"))
-cand_rgb = enhance.norm_to_uint(np.copy(rgb), 256, np.uint8)
-cand_rgb[cand_px] = np.asarray([255, 255, 255])
-gp.generate_raw_image(cand_rgb, figure_dir.joinpath("amazon_full_mycandidates.png"))
+""" Validate pixels identified as fire candidates """
+my_fire_px = fd.test_candidates(my_cand_px, pc.band("LWIR"),
+                                pc.band("SWIR"), pc.band("VIS"))
+my_fire_rgb = enhance.norm_to_uint(np.copy(rgb), 256, np.uint8)
+my_fire_rgb[my_fire_px] = fire_color
+gp.generate_raw_image(my_fire_rgb, figure_dir.joinpath("amazon_my_fires.png"))

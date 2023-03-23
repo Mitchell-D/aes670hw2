@@ -142,6 +142,8 @@ if __name__=="__main__":
     pc = PixelCat((image, noise), ("image", "noise"))
     rad_low, lpass = pc.get_filter("noise", low_pass=True)
     rad_high, hpass = pc.get_filter("noise", low_pass=False)
+    edge_low, elow = pc.get_edge_filter("noise", high_frequency=True)
+    edge_high, ehigh = pc.get_edge_filter("noise", high_frequency=False)
 
     print("Showing low-pass filter selected")
     gt.quick_render(lpass)
@@ -150,14 +152,20 @@ if __name__=="__main__":
 
     gp.generate_raw_image(
             enhance.norm_to_uint(lpass, 256, np.uint8),
-            figure_dir.joinpath("fft_filtered_lowpass.png"))
+            figure_dir.joinpath("fft_filtered_radiuslow.png"))
     gp.generate_raw_image(
             enhance.norm_to_uint(hpass, 256, np.uint8),
-            figure_dir.joinpath("fft_filtered_highpass.png"))
+            figure_dir.joinpath("fft_filtered_radiushigh.png"))
+    gp.generate_raw_image(
+            enhance.norm_to_uint(elow, 256, np.uint8),
+            figure_dir.joinpath("fft_filtered_edgelow.png"))
+    gp.generate_raw_image(
+            enhance.norm_to_uint(ehigh, 256, np.uint8),
+            figure_dir.joinpath("fft_filtered_edgehigh.png"))
 
     noise = enhance.norm_to_uint(noise, 256, np.uint8)
-    noise[np.where(noise==0)] = hpass[np.where(noise==0)]
-    noise[np.where(noise==255)] = hpass[np.where(noise==255)]
+    noise[np.where(noise==0)] = ehigh[np.where(noise==0)]
+    noise[np.where(noise==255)] = ehigh[np.where(noise==255)]
     #for i in noise.shape[0]:
     #    for j in noise.shape[1]:
     #        if noise[i,j] >

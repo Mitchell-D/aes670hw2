@@ -187,6 +187,63 @@ class PixelCat:
         self._bands.append(band)
         return None
 
+    def get_edge_filter(self, band:str, high_frequency:bool=True):
+        """
+        Apply an edge filter to both dimensions of the band brightness
+        array by setting low (optionally high) frequency wave intervals
+        to zero.
+
+        :@param high_frequency: If True, remove high frequencies.
+        :return: User-selected edge value and filtered array as a 2-tuple
+        """
+        # Get phase space image
+        P = enhance.dft2D(
+                np.copy(self.band(band)),
+                inverse=False,
+                use_scipy=True,
+                )
+        # Filter according to user specification
+        my_filter = lambda X,v: enhance.norm_to_uint(np.abs(
+            enhance.dft2D(enhance.border_mask(
+                    X, cutoff=int(((v+1)/256)*X.shape[0]),
+                    fill=0, high_freq=high_frequency),
+                inverse=True, use_scipy=True)), 256, np.uint8)
+        # Get a scaled filter value from the user
+        user_value = gt.trackbar_select(P, my_filter)
+        Q = enhance.border_mask(P, int(((user_value+1)/256)*P.shape[0]),
+                                fill=0, high_freq=high_frequency)
+        Y = enhance.linear_gamma_stretch(np.abs(enhance.dft2D(
+                Q, inverse=True, use_scipy=True)))
+        # Filter the phase array with the user-selected radius value.
+        return (int(((user_value+1)/256)*P.shape[0]), my_filter(P, user_value))
+
+    def get_box_filter(self, band:str, outside:bool=False, roll:bool=True):
+        # Get phase space image
+        P = enhance.dft2D(
+                np.copy(self.band(band)),
+                inverse=False,
+                use_scipy=True,
+                )
+        if roll:
+            P = np.roll(P, int(P.shape[0]/2), axis=0)
+            P = np.roll(P, int(P.shape[1]/2), axis=1)
+        yb, xb = gt.region_select(enhance.norm_to_uint(
+            np.log(1+np.abs(P)), 256, np.uint8))
+        if outside:
+            P[:yb[0]] = 0
+            P[:xb[0]] = 0
+            P[yb[1]:] = 0
+            P[xb[1]:] = 0
+        else:
+            P[yb[0]:yb[1],xb[0]:xb[1]] = 0
+
+        if roll:
+            P = np.roll(P, -int(P.shape[0]/2), axis=0)
+            P = np.roll(P, -int(P.shape[1]/2), axis=1)
+        Y = enhance.linear_gamma_stretch(np.abs(enhance.dft2D(
+            P, inverse=True, use_scipy=True)))
+        return Y
+
     def get_filter(self, band:str, low_pass:bool=True):
         """
         Apply a low-pass (by default) or high-pass filter to the band array

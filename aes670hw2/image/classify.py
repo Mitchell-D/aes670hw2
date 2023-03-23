@@ -58,9 +58,107 @@ def mlc(X:np.ndarray, categories:dict):
             classified[i,j] = mlc_disc(X[i,j])
     return classified, cat_keys
 
-def k_means(X:np.ndarray, clusters:int):
-    pass
+def k_means(X:np.ndarray, cluster_count:int, tolerance=1e-3,
+            debug:bool=False):
+    """
+    Perform k-means clustering on the input dataset with a provided number
+    of clusters and a decimal tolerance for cluster mean equality.
 
-def pca(X:np.ndarray):
-    pass
+    :@return: list of lists containing the indeces of each pixel belonging
+            to a cluster.
+    """
+    px_mean = np.zeros_like(np.arange(cluster_count))
+    def new_centroid():
+        """ Randomize centroid locations"""
+        nonlocal X
+        rand_y = np.random.randint(0, X.shape[0])
+        rand_x = np.random.randint(0, X.shape[1])
+        return X[rand_y, rand_x]
+
+    # Pick random pixels to initialize the means
+    centroids = [ new_centroid() for c in range(cluster_count) ]
+    all_valid = False
+    pc_pass = 0
+    while not all_valid:
+        '''
+        if any([ np.any(np.isnan(c)) for c in centroids ]):
+            if debug: print(f"resetting centroids...")
+            pc_pass = 0
+            centroids = [ new_centroid() for c in range(cluster_count) ]
+        elif pc_pass != 0:
+        '''
+        for c in range(cluster_count):
+            if np.all(np.isnan(centroids[c])):
+                centroids[c] = new_centroid()
+                if debug:
+                    print(f"New centroid for class {c}: {new_centroids[c]}")
+        if pc_pass != 0 and debug:
+            print([f"({c[0]:.4f}, {c[1]:.4f})" for c in centroids])
+        pc_pass += 1
+        new_centroids = []
+        clusters = [ [] for i in range(cluster_count)]
+        cluster_idx = [ [] for i in range(cluster_count)]
+        if debug: print(f"\nK-means pass {pc_pass}")
+        for i in range(X.shape[0]):
+            for j in range(X.shape[1]):
+                for c in range(cluster_count):
+                    px_mean[c] = np.linalg.norm(X[i,j]-centroids[c])
+                # Get the index of the closest centroid and assign this pixel
+                cidx = np.argmin(px_mean)
+                clusters[cidx].append(X[i,j])
+                cluster_idx[cidx].append((i,j))
+        # Collect centroid pixels
+        for c in range(cluster_count):
+            # Average all pixels in each centroid per band
+            new_centroids.append(np.average(np.asarray(clusters[c]), axis=0))
+            # Reset a centroid if it had no members.
+        all_valid = all([np.allclose(oldc,newc,tolerance) for oldc, newc
+                         in zip(centroids, new_centroids)])
+        centroids = new_centroids
+    '''
+    Y = np.zeros_like(X[:,:,0])
+    for c in range(cluster_count):
+        if debug: print(f"Cluster {c}: {centroids[c]} {len(clusters[c])}")
+        for i,j in cluster_idx[c]:
+            Y[i,j] = c
+    '''
+    return cluster_idx
+
+def pca(X:np.ndarray, print_table:bool=False):
+    """
+    Perform principle component analysis on the provided array, and return
+    the transformed array of principle components
+    """
+    flatX = np.copy(X).transpose(2,0,1).reshape(X.shape[2],-1)
+    # Get a vector of the mean value of each band
+    means = np.mean(flatX, axis=0)
+    # Get a bxb covariance matrix for b bands
+    covs = np.cov(flatX)
+    # Calculate and sort eigenvalues and eigenvectors
+    eigen = list(np.linalg.eig(covs))
+    eigen[1] = list(map(list, eigen[1]))
+    eigen = list(zip(*eigen))
+    eigen.sort(key=lambda e: e[0])
+    evals, evecs = zip(*eigen)
+    # Get a diagonal matrix of eigenvalues
+    transform = np.dstack(evecs).transpose().squeeze()
+    Y = np.zeros_like(X)
+    for i in range(X.shape[0]):
+        for j in range(X.shape[1]):
+            Y[i,j,:] = np.dot(transform, X[i,j,:])
+    if print_table:
+        cov_string = ""
+        ev_string = ""
+        for i in range(covs.shape[0]):
+            cov_string+=" & ".join(
+                    [f"{x:.4f}" for x in covs[i,:]])
+            ev_string+=f"{evals[i]:.4f}"+" & "+" & ".join(
+                    [f"{x:.4f}"for x in evecs[i]])
+            ev_string += " \\\\ \n"
+            cov_string += " \\\\ \n"
+        print("Covariance matrix:")
+        print(cov_string)
+        print("Eigenvalue and Eigenvector table:")
+        print(ev_string)
+    return Y
 

@@ -1,6 +1,15 @@
 import numpy as np
 from dataclasses import dataclass
 
+def cross_track_area(vza:np.ndarray):
+    """
+    Calculate the distortion across a scan at constant angular FOV.
+    Multiply by the nadir pixel area for all pixel areas.
+
+    :@param vza: Viewing zenith angle in degrees at each pixel
+    """
+    return np.power(1/np.cos(np.radians(vza)),3)
+
 def get_closest_pixel(latlon:np.ndarray, target:tuple, debug=False):
     """
     Use euclidean distance to determine the closest pixel indeces in latlon
