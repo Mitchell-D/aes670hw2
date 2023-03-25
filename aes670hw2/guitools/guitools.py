@@ -149,7 +149,7 @@ def trackbar_select(X:np.ndarray, func, label="", resolution:int=256,
     If the trackbar associated with one of the functions is modified,
     the function is called with only the
     """
-    wname = "catselect"
+    wname = "catsel"
     # make a new copy of X that can be modified
     if not type(func)==type(lambda m:1):
         raise ValueError(f"func argument must be a function with 2 " + \

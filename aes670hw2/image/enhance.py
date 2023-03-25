@@ -231,11 +231,22 @@ def gamma(X:np.ndarray, gamma, a=1.):
     """
     return a*X**(1/gamma)
 
-def norm_to_uint(X:np.ndarray, resolution:int, cast_type:type=np.uint):
+def norm_to_uint(X:np.ndarray, resolution:int, cast_type:type=np.uint,
+                 norm=True):
     """
     Linearally normalizes the provided float array to bins between 0 and
     resolution-1, and returns the new integer array as np.uint.
+
+    :@param resolution: Final integer resolution in brightness bins
+    :@param cast_type: Integer type to cast the array to.
+    :@param norm: If True, normalizes the array between its minimum and
+            maximum values. Otherwise, only normalizes to the maximum. If
+            False, the array must have all positive values, or else it can't
+            be casted to a uint type. cast_type can be a float or otherwise,
+            despite the name of this method.
     """
+    if not norm:
+        return (np.round(X/np.amax(X))*(resolution-1)).astype(cast_type)
     return (np.round(linear_gamma_stretch(X)*(resolution-1))).astype(cast_type)
 
 def vertical_nearest_neighbor(X:np.ma.MaskedArray, debug=False):
@@ -391,7 +402,9 @@ def linear_contrast(X:np.ndarray, a:float=1, b:float=0, debug=False):
     result as an integer. Simple linear equation y = ax+b with no
     normalization.
     """
-    return X*a+b
+    xmin = np.amin(X)
+    xmax = np.amax(X)
+    return np.clip(X*a+b, xmin, xmax)
 
 def saturated_linear_contrast(X:np.ndarray, nbins:int, lower_sat_pct:float=0,
                               upper_sat_pct:float=1):

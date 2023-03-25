@@ -6,6 +6,7 @@ from pprint import pprint as ppt
 import numpy as np
 from pathlib import Path
 from datetime import datetime as dt
+from datetime import timedelta as td
 import pickle as pkl
 
 from aes670hw2 import viirs
@@ -87,15 +88,16 @@ if __name__=="__main__":
     #latlon = (-20.57, -175.38)# Tonga
     #latlon = (-42.20, 146.62)# Tazmania
     #latlon = (12.09, -47.2)# Tazmania
-    latlon = (36.97, -86.456) # Bowling Green
+    #latlon = (36.97, -86.456) # Bowling Green
+    latlon = (30.95, 31.09) # Nile Delta
     pkl_path = Path("data/pkls/ez_naturalcolor.pkl")
     fig_dir = Path("figures/test")
     #xres, yres = (2096, 1179)
     xres, yres = (1920, 1080)
     dx = int(xres)
     dy = int(yres)
-    #target_time=dt.utcnow()
-    target_time=dt(year=2016, month=1, day=3, hour=17)
+    target_time=dt.utcnow()-td(days=2, hours=12)
+    #target_time=dt(year=2016, month=1, day=3, hour=17)
     file_template = "{atime}_{satellite}_naturalcolor.png"
     satellite = "NP"
 

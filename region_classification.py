@@ -80,20 +80,41 @@ def plot_classes(class_array:np.ndarray, fig_path:Path, class_labels:list,
 def get_pixel_selection_map(base_img:np.ndarray):
     pass
 
-def get_latex_table(categories:dict):
+def get_bad_latex_table(categories:dict, region:np.ndarray):
     """
     Use the category json dicts to print a latex-formatted table containing
     the mean and standard deviation of each class for each band.
     """
     cat_strings = []
-    for cat in my_cats.keys():
-        cat_data = np.dstack(region)[tuple(zip(*my_cats[cat]["pixels"]))]
+    for cat in categories.keys():
+        cat_data = np.dstack(region)[tuple(zip(*categories[cat]["pixels"]))]
         row_str = cat
         for i in range(cat_data.shape[1]):
             cat += f" & {np.average(cat_data[:,i]):.3f} "
             cat += f"& {np.std(cat_data[:,i]):.3f} "
         cat += "\\\\"
         cat_strings.append(cat)
+    return "\n".join(cat_strings)
+
+def get_latex_table(categories:dict):
+    """
+    Prints the category name and the mean/standard deviation of each band in
+    a list of pixels belonging to that category.
+
+    :@param categories: Dictionary mapping category names to a list of pixel
+            values associated with that cateogry.
+    """
+    cat_items = categories.items()
+    cat_strings = []
+    for cat,pixels in cat_items:
+        pixels = np.asarray(pixels)
+        means = np.average(pixels, axis=0)
+        stdevs = np.std(pixels, axis=0)
+        pstring = cat
+        for i in range(means.size):
+            pstring += f" & {means[i]:.3f} & {stdevs[i]:.3f} "
+        pstring += "\\\\"
+        cat_strings.append(pstring)
     return "\n".join(cat_strings)
 
 
@@ -154,10 +175,13 @@ if __name__=="__main__":
 
     # Get the pixel areas
     area = gh.cross_track_area(sunsat[2])*(.742*.776)
+    area_norm = enhance.linear_gamma_stretch(area)
+    #gt.quick_render(area_image)
+    gp.generate_raw_image(area_norm, fig_dir.joinpath("pixel_area_ratio.png"))
 
     #km_bands = ["M07", "M12"]
     km_bands = ["M10", "M15"]
-    #'''
+    '''
     """ Do k-means classification """
     tolerance = 1e-4
     class_num = 4
@@ -169,9 +193,9 @@ if __name__=="__main__":
     with pkl_path.open("wb") as pklfp:
         print(f"Generating pickle at {pkl_path.as_posix()}")
         pkl.dump(km, pklfp)
-    #'''
+    '''
 
-    #'''
+    '''
     """ Plot k-means classes """
     # Yeah this is a shitty way to do it.
     #km_pkl = Path("data/pkls/k-means_M10+M15_6cat.pkl")
@@ -205,55 +229,79 @@ if __name__=="__main__":
         print(class_line)
     plot_classes(Y, fig_dir.joinpath(Path(km_pkl.stem+".png")),
                  labels, cmap)
-    #'''
+    '''
 
     #'''
     """ Merge all dictionaries from pixel selection sessions """
     my_cats = merge_category_jsons([
         #Path("data/pixel_selection/selection_1.json"),
         #Path("data/pixel_selection/selection_2.json"),
-        #Path("data/pixel_selection/selection_3.json")
+        #Path("data/pixel_selection/selection_3.json"),
         Path("data/pixel_selection/selection_4.json"),
         Path("data/pixel_selection/selection_5.json")
         ])
     cat_px = { k:list(my_cats[k]["pixels"]) for k in my_cats.keys() }
-    #print(get_latex_table(my_cats))
+    #print(get_bad_latex_table(my_cats))
+    #print([ (k,len(v)) for k,v in cat_px.items() ])
+    print(info["bands"])
     #'''
 
     """ Generate a figure showing selected pixel locations """
     #fig_path = fig_dir.joinpath(Path("selections.png"))
-    # make_selection_rgb(region, my_cats, fig_path)
+    #make_selection_rgb(region, my_cats, fig_path)
 
-    '''
+    #'''
     """ Do principle component analysis on all 9 bands """
+    #components = [0, 1, 2]
     components = [0, 1, 2]
+    pca_bands = ["M05", "M07", "M15"]
+    #pca_bands = info["bands"]
     print_table = True
     #pca = classify.pca(np.dstack(region)[:,:,-3:])
-    pca = classify.pca(np.dstack(region), print_table=print_table)
+    pca_region = np.dstack([region[info["bands"].index(b)]
+                            for b in pca_bands])
+    gp.generate_raw_image(
+            np.dstack([ enhance.norm_to_uint(pca_region[:,:,i], 256, np.uint8)
+                       for i in range(len(pca_bands))]),
+            fig_dir.joinpath(Path(
+                f"region_{'+'.join(pca_bands)}.png")))
+    pca = classify.pca(pca_region, print_table=print_table)
+    #pca_norm = enhance.norm_to_uint(np.dstack(
+    #    [ pca[:,:,i] for i in components]), 256, np.uint8)
     pca_rgb = np.dstack([
         enhance.norm_to_uint(pca[:,:,i], 256, np.uint8)
         for i in components ])
+    print(pca_rgb.shape)
     pca_rgb_eq = np.dstack([
         enhance.norm_to_uint(enhance.histogram_equalize(
             pca[:,:,i], 256)[0], 256, np.uint8)
         for i in components ])
-    gp.generate_raw_image(pca_rgb, Path("figures/classification/" + \
-            f"pca_{'+'.join(list(map(str, components)))}.png"))
+    gp.generate_raw_image(pca_rgb, fig_dir.joinpath(Path(
+        f"pca_{'+'.join(list(map(str, components)))}_" +
+        f"{'+'.join(pca_bands)}.png")))
     gp.generate_raw_image(pca_rgb_eq, Path("figures/classification/" + \
-            f"pca_{'+'.join(list(map(str, components)))}_eq.png"))
-    '''
+            f"pca_{'+'.join(list(map(str, components)))}_{'+'.join(pca_bands)}_eq.png"))
+    #'''
 
 
     '''
     """ Do maximum-likelihood classification with the pixel classes. """
-    mlc, labels = classify.mlc(np.dstack(region), cat_px)
+    #mlc_bands = ["M10", "M15"] # Bands to use for classification
+    mlc_bands = info["bands"]
+    mlc_region = np.dstack([ region[info["bands"].index(b)]
+                            for b in mlc_bands ])
+    mlc, labels = classify.mlc(mlc_region, cat_px)
     print(f"Total Area: {np.sum(area):.2f}")
     for i in range(len(cat_px.keys())):
         cat_area = np.sum(area[np.where(mlc==i)])
         print(f"Category {labels[i]} Area: {cat_area:.2f}")
+    categories = { labels[i]:mlc_region[np.where(mlc==i)]
+                  for i in range(len(labels)) }
+    print(get_latex_table(categories))
     gt.quick_render(mlc)
-    plot_classes(mlc, Path("figures/classification/mlc_4+5.png"),
-                 labels, region_cmap_xkcd)
+    plot_classes(
+            mlc, fig_dir.joinpath(Path(f"mlc_4+5_{'+'.join(mlc_bands)}.png")),
+            labels, region_cmap_xkcd)
     '''
 
     '''
@@ -265,6 +313,6 @@ if __name__=="__main__":
     for i in range(len(cat_px.keys())):
         cat_area = np.sum(area[np.where(classified==i)])
         print(f"Category {labels[i]} Area: {cat_area:.2f}")
-    plot_classes(classified, fig_path, labels, region_cmap_xkcd)
+    #plot_classes(classified, fig_path, labels, region_cmap_xkcd)
     gt.quick_render(enhance.norm_to_uint(classified, 256, np.uint8))
     '''

@@ -60,6 +60,7 @@ gp.generate_raw_image(fc_cand_rgb, figure_dir.joinpath(
 """ Validate pixels identified as fire candidates """
 fc_fire_px = fd.test_candidates(fc_cand_px, pc.band("LWIR"),
                              pc.band("SWIR"), pc.band("VIS"))
+print(f"Fires identified: {len(fc_fire_px[0])}")
 fc_fire_rgb = enhance.norm_to_uint(np.copy(rgb), 256, np.uint8)
 fc_fire_rgb[fc_fire_px] = fire_color
 gp.generate_raw_image(fc_fire_rgb, figure_dir.joinpath(
@@ -85,4 +86,5 @@ my_fire_px = fd.test_candidates(my_cand_px, pc.band("LWIR"),
                                 pc.band("SWIR"), pc.band("VIS"))
 my_fire_rgb = enhance.norm_to_uint(np.copy(rgb), 256, np.uint8)
 my_fire_rgb[my_fire_px] = fire_color
+print(f"Fires identified: {len(my_fire_px[0])}")
 gp.generate_raw_image(my_fire_rgb, figure_dir.joinpath("amazon_my_fires.png"))

@@ -1,0 +1,7 @@
+Total Area: 200691.53
+Category cloud Area: 8397.83
+Category water Area: 246.60
+Category mtn_veg Area: 52797.74
+Category clay Area: 52412.43
+Category grassland Area: 77051.98
+Category crops Area: 9784.94

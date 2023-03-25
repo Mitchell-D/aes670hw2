@@ -31,7 +31,7 @@ class PixelCat:
         assert all([ X.shape==arrays[0].shape and len(arrays[0].shape)==2
                     for X in arrays ])
         assert len(set(bands)) == len(arrays) and len(arrays)
-        self._arrays = arrays
+        self._arrays = list(arrays)
         self._bands = list(bands)
         self._shape = arrays[0].shape
 
@@ -44,16 +44,28 @@ class PixelCat:
         assert band in self._bands
         return self._arrays[self._bands.index(band)]
 
-    def pick_linear_contrast(self, band:str, offset:float=0, debug=False):
+    def pick_linear_contrast(self, band:str, offset:float=0,
+                             set_band:bool=False, debug=False):
+        """ """
         assert band in self._bands
         slope_scale = 50
-        return m.e**((gt.trackbar_select(
+        contrast = m.e**((gt.trackbar_select(
                 X=self.band(band),
                 func=lambda X, v: enhance.linear_contrast(
                         X, m.e**((v-100)/slope_scale), offset),
-                label=f"Band {band} gamma: ",
+                label=f"Band {band} contrast slope: ",
                 debug=debug
                 )-100)/slope_scale)
+        print(contrast)
+        print(enhance.array_stat(self.band(band)))
+        if set_band:
+            print("Setting band")
+            band_idx = self._bands.index(band)
+            self._arrays[band_idx] = enhance.linear_contrast(
+                    self.band(band), contrast, offset)
+        print(enhance.array_stat(self.band(band)))
+        print()
+        return contrast
 
     def pick_band_scale(self, band:str, set_band:bool=False):
         assert band in self._bands
@@ -143,7 +155,8 @@ class PixelCat:
                 self.band(band), choice), band=band, replace=True)
         return choice
 
-    def get_rgb(self, bands:list, recipes:list=None, show=True, debug=False):
+    def get_rgb(self, bands:list, recipes:list=None, show=True,
+                normalize:bool=False, debug=False):
         """
         Compile a (M,N,3)-shaped RGB numpy array of bands corresponding to
         the provided list of labels.
@@ -160,6 +173,9 @@ class PixelCat:
         if debug: print(f"Generating RGB using bands {bands}")
         RGB = np.dstack([ recipes[i](self.band(bands[i]))
                           for i in range(len(bands)) ])
+        if normalize:
+            for i in range(3):
+                RGB[:,:,i] = enhance.linear_gamma_stretch(RGB[:,:,i])
         if show:
             gt.quick_render(RGB)
         return RGB

@@ -7,8 +7,6 @@ import cartopy.feature as cf
 import datetime as dt
 import numpy as np
 import math as m
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import pickle as pkl
 import xarray as xr
 import metpy
@@ -17,6 +15,9 @@ import imageio
 from pathlib import Path
 from PIL import Image
 
+import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from matplotlib.ticker import LinearLocator, StrMethodFormatter, NullLocator
 from cartopy.mpl.gridliner import LongitudeLocator, LatitudeLocator
 
@@ -109,16 +110,15 @@ def plot_lines(domain:np.ndarray, ylines:list, image_path:Path=None,
     plot_spec = old_ps
 
     # Make sure all codomain arrays equal the domain size
-    if not all((l.size == len(domain) for l in ylines)):
-        raise ValueError(
-                f"All codomain arrays must be the same size as the domain.")
+    #if not all((l.size == len(domain) for l in ylines)):
+    #    raise ValueError(
+    #            f"All codomain arrays must be the same size as the domain.")
 
     # Plot each
     fig, ax = plt.subplots()
     for i in range(len(ylines)):
-        print("showing")
         ax.plot(
-                domain,
+                range(ylines[i].shape[0]),
                 ylines[i],
                 label=labels[i] if len(labels) else "",
                 linewidth=plot_spec.get("line_width")

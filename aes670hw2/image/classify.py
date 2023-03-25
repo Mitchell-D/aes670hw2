@@ -36,6 +36,9 @@ def mlc(X:np.ndarray, categories:dict):
     :@param X: (M,N,b) ndarray with b independent variables
     :@param X: Dictionary mapping category labels to a set of 2-tuple pixel
             indeces of pixels in X belonging to that class.
+    :@return: 2-tuple like (classified, keys) containing the integer-
+            -classified array, and a list of keys with indeces corresponding
+            to the values in the array labeled by that category.
     """
     cat_keys = list(categories.keys())
     cats = [X[tuple(map(np.asarray, zip(*categories[cat])))]

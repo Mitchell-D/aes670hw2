@@ -164,7 +164,7 @@ if generate_rgbs:
     gp.generate_raw_image(
             rgb,
             figure_dir.joinpath(figure_template.format(
-                bands="-".join(custom_bands),
+                bands="-".join(dcp_bands),
                 label="dcp"
                 )))
 

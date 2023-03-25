@@ -18,7 +18,7 @@ mod_pkl = Path("data/pkls/NP-MOD-philmont_20160712_2006.pkl")
 
 image_width = 640
 image_height = 512
-nbins = 2048
+nbins = 512
 dpi = "figure"
 target_latlon = (37.4, -107) # San Juan
 
@@ -106,10 +106,15 @@ for i in range(len(equalized)):
         equalized[i], nbins, equalize=False, debug=debug))
     equalized_hists[i].update({"band":info["bands"][i]})
 
+#'''
+idx_valid = [np.where(h["hist"] != 0)[0] for h in equalized_hists]
+val_valid = [  h["hist"][np.where(h["hist"] != 0)] for h in equalized_hists ]
+#'''
+
 """ Generate a plot of corrected frequency histograms """
 gp.plot_lines(
         domain=range(nbins),
-        ylines=[h["hist"] for h in equalized_hists],
+        ylines=np.asarray(val_valid),
         labels=[
             f"Band {h['band']}; " + \
                 "$\mu = $"+str(gp.round_to_n(h["mean"], 5)) + \
@@ -216,9 +221,11 @@ for i in range(len(equalized)):
     equalized_hists[i].update({"band":info["bands"][i]})
 
 """ Generate a plot of corrected frequency histograms """
+idx_valid = [np.where(h["hist"] != 0)[0] for h in equalized_hists]
+val_valid = [  h["hist"][np.where(h["hist"] != 0)] for h in equalized_hists ]
 gp.plot_lines(
         domain=range(nbins),
-        ylines=[h["hist"] for h in equalized_hists],
+        ylines=val_valid,
         labels=[
             f"Band {h['band']}; " + \
                 "$\mu = $"+str(gp.round_to_n(h["mean"], 5)) + \
