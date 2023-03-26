@@ -234,15 +234,16 @@ if __name__=="__main__":
     #'''
     """ Merge all dictionaries from pixel selection sessions """
     my_cats = merge_category_jsons([
-        #Path("data/pixel_selection/selection_1.json"),
-        #Path("data/pixel_selection/selection_2.json"),
-        #Path("data/pixel_selection/selection_3.json"),
+        Path("data/pixel_selection/selection_1.json"),
+        Path("data/pixel_selection/selection_2.json"),
+        Path("data/pixel_selection/selection_3.json"),
         Path("data/pixel_selection/selection_4.json"),
         Path("data/pixel_selection/selection_5.json")
         ])
     cat_px = { k:list(my_cats[k]["pixels"]) for k in my_cats.keys() }
     #print(get_bad_latex_table(my_cats))
-    #print([ (k,len(v)) for k,v in cat_px.items() ])
+    print([ (k,len(v)) for k,v in cat_px.items() ])
+    exit(0)
     print(info["bands"])
     #'''
 

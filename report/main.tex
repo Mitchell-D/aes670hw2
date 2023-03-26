@@ -30,6 +30,8 @@
 
 \maketitle
 
+\clearpage
+
 \section{Satellite Image Analysis}
 
 \subsection{Brightness histograms and equalization}
@@ -39,7 +41,7 @@
     \includegraphics[width=.48\linewidth]{figures/p1/mod_histograms.png}
     \includegraphics[width=.48\linewidth]{figures/p1/mod_cumulative.png}
     \includegraphics[width=.48\linewidth]{figures/p1/mod_histograms_correct.png}
-    \caption{Brightness histograms, cumulative histograms, and discretized histogram-normalized distributions of MODIS bands M15, M11, M10, M05, M04, and M03.}
+    \caption{Brightness histograms, cumulative histograms, and discretized histogram-normalized distributions of MODIS bands M15, M11, M10, M05, M04, and M03. Histograms are useful in satellite remote sensing because they characterize the distribution of brightness values for each channel in an image. Subtle features of an image are lost when many brightness values are rounded to the same discrete bin. When enhancement techniques like histogram equalization and matching are applied, these subtle features can be accentuated. Histogram equalization is useful when the probability density of each brightness needs to be as evenly distributed as possible, and histogram equalization is useful for matching the distribution of brightnesses between images, enhancing brightness values in specific subregions, or adapting the brightnesses to a convenient and well-known curve like a gaussian distribution.}
     \label{p1_histograms}
 \end{figure}
 
@@ -47,13 +49,7 @@
 
 \subsection{Image enhancement with histogram equalization}
 
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=.49\linewidth]{figures/p2/naturalcolor_original.png}
-    \includegraphics[width=.49\linewidth]{figures/p2/naturalcolor_histnorm.png}
-    \caption{Original MODIS natural color RGB (bands I03, I02, and I01), and histogram-enhanced RGB, both normalized.}
-    \label{p2_enhanced}
-\end{figure}
+\vspace{2em}
 
 \begin{figure}[h!]
     \centering
@@ -63,12 +59,32 @@
     \label{p2_histograms}
 \end{figure}
 
+\vspace{7.2em}
+
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=.48\linewidth]{figures/p2/truecolor_contrast.png}
+    \includegraphics[width=.48\linewidth]{figures/p2/naturalcolor_original.png}
+    \includegraphics[width=.48\linewidth]{figures/p2/naturalcolor_histnorm.png}
+    \caption{Original MODIS natural color RGB (bands I03, I02, and I01), and histogram-enhanced RGB, both normalized.}
+    \label{p2_enhanced}
+\end{figure}
+
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.48\linewidth]{figures/p2/img_histograms.png}
     \includegraphics[width=.48\linewidth]{figures/p2/img_histograms_contrast.png}
-    \caption{Natural color RGB enhanced with the saturating linear contrast method, and its brightness frequency histogram.}
-    \label{p2_histograms}
+    \caption{Original and saturating contrast-stretched brightness frequency distribution hisograms for each MODIS imagery band used in the naturalcolor image.}
+    \label{p2_contrast_histograms}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.48\linewidth]{figures/p2/naturalcolor_original.png}
+    \includegraphics[width=.48\linewidth]{figures/p2/truecolor_contrast.png}
+
+    \caption{Original natural color RGB and natural color RGB enhanced with the saturating linear contrast method. In my opinion, although the contrast-stretched image is more visually appealing, the histogram-equalized one is much better for identifying pixel classes since subtle features are spread over a greater range of pixel values and aren't rounded to the same brightness level as often.}
+    \label{p2_contrast}
 \end{figure}
 
 \clearpage
@@ -101,7 +117,20 @@
     \label{p3_selection_rgbs}
 \end{figure}
 
-Figure \ref{p3_selection_rgbs} displays the RGBs I used to pick samples for pixel classes, the first image is an equalized truecolor image with bands M05, M04, and M03, the second image is a gamma-enhanced day-cloud phase RGB adaptation of the GOES ABI recipe using bands M09, M05, and M10, and the third image is a histogram-enhanced custom recipe of band M15, M07-M05 NDVI, and M10-M04 NDSI, which I created in order to easily distinguish clouds and multiple surface types. Band M15, which has a peak wavelength near $10.8\mu m$, is sensitive to the emissivity properties of surfaces, which makes it easy to distinguish red clay from arid grassland, NDVI makes vegetation very visible, and NDSI incidentally distinguishes exposed and rocky areas from vegetation and grassland better than the truecolor.
+Figure \ref{p3_selection_rgbs} displays the RGBs I used to pick samples for pixel classes, the first image is an equalized truecolor image with bands M05, M04, and M03. The second image is a histogram-enhanced custom recipe of band M15, M07-M05 NDVI, and M10-M04 NDSI, which I created in order to easily distinguish clouds and multiple surface types, and the third image is a gamma-enhanced day-cloud phase RGB adaptation of the GOES ABI recipe using bands M09, M05, and M10. The RED band of my custom RGB is M15, which has a peak wavelength near $10.8\mu m$. Band M15 is sensitive to the emissivity properties of surfaces and helps distinguish red clay from arid grassland. The GREEN band is NDVI, which makes vegetation very visible. Last, the BLUE band is NDSI, which separates snow from clouds and vegetation, and incidentally distinguishes exposed and rocky areas from vegetation and grassland better than the truecolor.
+
+In order to choose sample pixels, I developed a GUI tool with OpenCV2 that that allows the user to select and deselect individual pixels for each category, and cycles through provided RGB recipes so that the user can select samples with the RGB that best resolves each category.
+
+\begin{figure}
+    \centering
+    \begin{tabular}{C | C C C C C C}
+        \textnormal{Category} & \textnormal{Cloud} & \textnormal{Water} & \textnormal{Mtn Veg} & \textnormal{Clay} & \textnormal{Grassland} & \textnormal{Crops} \\
+        \hline
+        \textnormal{Sample Count} & 874 & 357 & 1085 & 956 & 974 & 475 \\
+    \end{tabular}
+    \caption{Quantity of unique pixels collected as samples for each category.}
+    \label{p3_samples}
+\end{figure}
 
 \begin{figure}
     \centering
@@ -140,8 +169,8 @@ Figure \ref{p3_selection_rgbs} displays the RGBs I used to pick samples for pixe
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=.8\linewidth]{figures/p4/mdc_4+5.png}
-    \caption{Minimum-distance classification of my region using all bands listed in Fig \ref{p3_stats}.}
+    \includegraphics[width=.7\linewidth]{figures/p4/mdc_4+5.png}
+    \caption{Minimum-distance classification of my region using all bands listed in Fig \ref{p3_stats}. To perform minimum-distance classification on my image, I extracted and averaged the sample pixels for each class, applied the discriminant function $g_i(\vec{x})=2\vec{m}_i\cdot\vec{x}-\vec{m}_i\cdot\vec{m}_i$ to each pixel $\vec{x}$ and class mean $\vec{m}_i$, and assigned each pixel to the class minimizing $g_i({\vec{x}})$.}
     \label{p4_mdc}
 \end{figure}
 
@@ -173,7 +202,7 @@ Figure \ref{p3_selection_rgbs} displays the RGBs I used to pick samples for pixe
         Grassland & 0.003 & 0.002 & 0.139 & 0.065  & 0.117 & 0.041  & 0.116 & 0.024  & 0.118 & 0.019 \\
         Crops & 0.002 & 0.001 & 0.682 & 0.214  & 0.619 & 0.226  & 0.588 & 0.214  & 0.598 & 0.219 \\
     \end{tabular}
-    \caption{Area coverage}
+    \caption{Area coverage and statistics for each category and input band.}
     \label{p4_stats}
 \end{figure}
 
@@ -215,7 +244,7 @@ Figure \ref{p3_selection_rgbs} displays the RGBs I used to pick samples for pixe
         Grassland & 43,843 & 0.391 & 0.037  & 13.233 & 0.447 \\
         Crops & 32,601 & 0.217 & 0.025  & 10.460 & 0.532 \\
     \end{tabular}
-    \caption{Bands M10 and M15 maximum-likelihood mean and standard deviation for each category, and each category's area coverage.}
+    \caption{Bands M10 and M15 maximum-likelihood mean and standard deviation for each category, and each category's area coverage. Area coverage was calculated by taking the sum of the area of each pixel for each class based on the area distortion map shown in Figure \ref{p3_region}.}
     \label{p5_2band_stats}
 \end{figure}
 
@@ -259,13 +288,13 @@ Figure \ref{p3_selection_rgbs} displays the RGBs I used to pick samples for pixe
     \includegraphics[width=.48\linewidth]{figures/p6/k-means_M10+M15_4cat.png}
     \includegraphics[width=.48\linewidth]{figures/p6/k-means_M10+M15_5cat.png}
     \includegraphics[width=.48\linewidth]{figures/p6/k-means_M10+M15_6cat.png}
-    \caption{K-means classification using bands M10 and M15. Images are initialized with 4, 5, and 6 categories, respectively.}
+    \caption{K-means classification using MODIS bands M10 and M15. Images are initialized with 4, 5, and 6 categories, respectively. As shown in Figure \ref{p5_inputs}, MODIS bands M10 and M15 have a nonlinear correlation that makes clouds easy to distinguish, and visibly differentiates vegetated surfaces from arid ground. These affinities are reflected in the K-means classification results, which starkly separate clouds, vegetation, and grasslands/red clay. My K-means algorithm randomly-selects pixels as centroids, then uses euclidean distance to assign each pixel to the closest cluster. Once pixels are collected, the algorithm calculates the new mean for each cluster and repeats at the euclidean distance operation until all the means are equal up to 3 decimal accuracy. I found that the randomly-initialized centroids would sometimes fail to find any nearby pixels, so I implemented a condition that re-initializes a centroid up to 5 times if its cluster has no members. After 5 failures, the cluster is dropped. My results show that 4 classes is too few since no unvegetated surface texture is identified, and 6 classes is too many since no additional surface types were found. I also noticed that K-means classified much of the lower-elevation vegetated surfaces separately from the higher-elevation regions. After looking at locations near the border of the 2 classes with Google street view, I realized that they finely trace the altitude-driven transition from forests containing mostly ponderosa pines and aspen trees to forests dominated by spruce-fir, which is corroborated by Colorado State Forest Service.\newline \textsc{https://csfs.colostate.edu/colorado-forests/forest-types/}}
     \label{p6_456_classes}
 \end{figure}
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=.7\linewidth]{figures/p6/k-means_M10+M15_5cat_noborder.png}
+    \includegraphics[width=.98\linewidth]{figures/p6/k-means_M10+M15_5cat_noborder.png}
     \caption{5-category k-means classification with bands M10 and M15. }
     \label{p6_noborder}
 \end{figure}
@@ -377,7 +406,7 @@ Figure \ref{p3_selection_rgbs} displays the RGBs I used to pick samples for pixe
     \includegraphics[width=.48\linewidth]{figures/p8/aster_sequential.png}
     \includegraphics[width=.48\linewidth]{figures/p8/aster_multi.png}
 
-    \caption{Original ASTER image, edge detection using consecutive application of filters, histogram-equalized edge detection using each filter applied independently, then combined with euclidean distance in the same manner as the Sobel operator. Both edge detection methods appear to be effective, but even after histogram equalization the image generated with sequentially-applied filters appears noisier and more difficult to resolve than the euclidean distance scheme.}
+    \caption{Original ASTER image, edge detection using consecutive application of filters, histogram-equalized edge detection using each filter applied independently, then combined with euclidean distance in the same manner as the Sobel operator. Both edge detection methods appear to be effective since the edges of structures are much easier to resolve than in the original image, but even after histogram equalization the image generated with sequentially-applied filters appears noisier and more difficult to resolve than the euclidean distance scheme.}
     \label{p8_edgeresults}
 \end{figure}
 
@@ -440,7 +469,7 @@ Figure \ref{p9_landsat} displays my results as an HSV-mapped RGB with gamma enha
     \includegraphics[width=.32\linewidth]{figures/p11/amazon_fireRGB_IRdiff+LWIR+VIS.png}
     \includegraphics[width=.32\linewidth]{figures/p11/amazon_fc_cand.png}
     \includegraphics[width=.32\linewidth]{figures/p11/amazon_fc_fires.png}
-    \caption{My custom-enhanced fire RGB, pixels identified as fire candidates by the Flasse \& Ceccato (F\&C) method, and fires confirmed by F\&C. 5,982 pixels were positively identified as fires with the standard thresholds.}
+    \caption{My custom-enhanced fire RGB, pixels identified as fire candidates by the Flasse \& Ceccato (F\&C) method, and fires confirmed by F\&C. 5,982 pixels were positively identified as fires with the standard thresholds. The RGB in the first image is a gamma-stretched composite with RED=SWIR-LWIR, GREEN=LWIR, and BLUE=VIS, where the visible channel is the average reflectance in the $.459-.670\mu m$ range (see Figure \ref{p11_my} caption). These are the same channels I used as inputs for the F\&C procedure.}
     \label{p11_fc}
 \end{figure}
 
@@ -462,8 +491,36 @@ Figure \ref{p9_landsat} displays my results as an HSV-mapped RGB with gamma enha
     \includegraphics[width=.48\linewidth]{figures/p12/fft_filtered_radiuslow.png}
     \includegraphics[width=.48\linewidth]{figures/p12/fft_filtered_radiushigh.png}
     \includegraphics[width=.48\linewidth]{figures/p12/fft_filtered_reconstruction.png}
-    \caption{Original noisy image, noisy image with a radius filter (F1) removing middle-frequency values, noisy image with a radius filter removing highest and lowest-frequency values (F2), and a denoised reconstruction. I manually selectied the phase space regions to remove for each filter with an OpenCV2-based GUI tool that I built. After the filters were applied, I generated the reconstruction by normalizing the F1 brightness array to $[0,1]$, then using restricting F1 to a lower-bound threshold of $.078$ to identify and mask noise pixels. Finally, I replaced the masked pixels in the noisy image with the pixel values smoothed by F2. The resulting reconstruction still has residual noise since F2 only ``smears'' the noisy pixels, but the denoised image is visibly smoother.}
+    \caption{Original noisy image, noisy image with a radius filter (F1) removing middle-frequency values, noisy image with a radius filter removing highest and lowest-frequency values (F2), and a denoised reconstruction. I manually selected the phase space regions to remove for each filter with an OpenCV2-based GUI tool that I built. After the filters were applied, I generated the reconstruction by normalizing the F1 brightness array to $[0,1]$, then using restricting F1 to a lower-bound threshold of $.078$ to identify and mask noise pixels. Finally, I replaced the masked pixels in the noisy image with the pixel values smoothed by F2. The resulting reconstruction still has residual noise since F2 only ``smears'' the noisy pixels, but the denoised image is visibly smoother.}
     \label{p11_fc}
 \end{figure}
+
+\clearpage
+
+\section{Code comment}
+
+One of my major goals for graduate school is to develop code I write for homework and research into a highly generalized and modular python codebase. To that end, I wrote more than 3,000 lines of python for this assignment as a series of modules that can be imported as a python package. All the figures in this document were generated with small scripts importing the high-level methods contained in the modules. My code is available on github with the link below.
+
+\vspace{1em}
+
+\begin{center}
+    \textsc{https://github.com/Mitchell-D/aes670hw2/}
+\end{center}
+
+\vspace{1em}
+
+\noindent
+\textbf{Capabilities of my codebase:}
+
+\begin{itemize}
+    \item{Search the MODAPS-LAADS DAAC (LWS API) for any available product, and narrow search by illumination, geographic range, and a target time or time range, and download products that match the conditions.}
+    \item{Process MODIS and VIIRS L1b data and georeference arrays into geographically-specified subgrids of a requested set of bands.}
+    \item{GUI tools for manually selecting sub-regions, picking pixel categories from RGBs, selecting parameter values for arbitrary enhancement functions (linear gamma, contrast stretch, noise filters) using a sliding bar and a live-rendered image, and manually removing specific regions in the phase space of an array with a click-and-drag function.}
+    \item{All classification and filtering algorithms, with standardized inputs and outputs.}
+    \item{Methods for procedurally rasterizing markers, boxes, and circles, and text onto an ndarray using geographic or pixel-coordinate reference.}
+    \item{Destripe and perform bowtie-correction on arbitrary pixel grids.}
+    \item{Calculate and print a variety of statistical features for a provided array.}
+    \item{Generalized methods for plotting data in a variety of formats (histograms, heatmaps, projected rasters, raw images, etc).}
+\end{itemize}
 
 \end{document}
