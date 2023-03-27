@@ -9,6 +9,17 @@
 \usepackage{amstext}
 \usepackage{array}
 \usepackage{xcolor}
+\usepackage{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=blue,
+    pdftitle={aes670hw2},
+    pdfpagemode=FullScreen,
+    }
+\urlstyle{same}
 
 \newcolumntype{L}{>{$}l<{$}}  % Math mode table
 \newcolumntype{R}{>{$}r<{$}}  % Math mode table
@@ -22,15 +33,75 @@
 \titleformat{\subsection}
   {\normalfont\fontsize{12}{15}\bfseries}{\thesubsection}{1em}{}
 
-\title{AES 561 Homework 4}
+\title{AES 670 Homework 2}
  \author{Mitchell Dodson}
-\date{March 23, 2023}
+\date{March 26, 2023}
 
 \begin{document}
 
 \maketitle
 
-\clearpage
+\vspace{5em}
+
+
+\section{Hand calculations}
+
+\subsection{Problem 1}
+
+\begin{center}
+    \makebox[\textwidth]{\includegraphics[width=.75\paperwidth]{figures/math/p1_1.jpg}}
+
+    \makebox[\textwidth]{\includegraphics[width=.9\paperwidth]{figures/math/p1_2.jpg}}
+
+    \makebox[\textwidth]{\includegraphics[width=.9\paperwidth]{figures/math/p1_3.jpg}}
+
+    \makebox[\textwidth]{\includegraphics[width=.9\paperwidth]{figures/math/p1_4.jpg}}
+\end{center}
+
+\subsection{Problem 2}
+
+\begin{center}
+    \makebox[\textwidth]{\includegraphics[width=.8\paperwidth]{figures/math/p2.jpg}}
+\end{center}
+
+\subsection{Problem 3}
+
+\begin{center}
+    \makebox[\textwidth]{\includegraphics[width=.7\paperwidth]{figures/math/p3.jpg}}
+\end{center}
+
+\subsection{Problem 4}
+
+\begin{center}
+    \makebox[\textwidth]{\includegraphics[width=.9\paperwidth]{figures/math/p4_1.jpg}}
+
+    \makebox[\textwidth]{\includegraphics[width=.9\paperwidth]{figures/math/p4_2.jpg}}
+\end{center}
+
+\subsection{Problem 5}
+
+\subsection{Problems 6, 7, and 8}
+
+\begin{center}
+    \makebox[\textwidth]{\includegraphics[width=.8\paperwidth]{figures/math/p6_1.jpg}}
+
+    \makebox[\textwidth]{\includegraphics[width=.8\paperwidth]{figures/math/p6_2+p7+p8.jpg}}
+\end{center}
+
+\begin{figure}
+    \includegraphics[width=.95\linewidth]{figures/math/ch8_scatter.png}
+    \caption{Scatterplot of the data points used in problems 6, 7, and 8. The undetermined pixel marked in red is right between the sampled classes 1 and 2. All 3 methods provided reasonable classifications, but the undetermined pixel subjectively correlates best with class 1. }
+\end{figure}
+
+\subsection{Problem 9}
+
+\begin{center}
+    \makebox[\textwidth]{\includegraphics[width=.75\paperwidth]{figures/math/p9_1.jpg}}
+
+    \makebox[\textwidth]{\includegraphics[width=.8\paperwidth]{figures/math/p9_2.jpg}}
+\end{center}
+
+\subsection{Problem 10}
 
 \section{Satellite Image Analysis}
 
@@ -117,7 +188,7 @@
     \label{p3_selection_rgbs}
 \end{figure}
 
-Figure \ref{p3_selection_rgbs} displays the RGBs I used to pick samples for pixel classes, the first image is an equalized truecolor image with bands M05, M04, and M03. The second image is a histogram-enhanced custom recipe of band M15, M07-M05 NDVI, and M10-M04 NDSI, which I created in order to easily distinguish clouds and multiple surface types, and the third image is a gamma-enhanced day-cloud phase RGB adaptation of the GOES ABI recipe using bands M09, M05, and M10. The RED band of my custom RGB is M15, which has a peak wavelength near $10.8\mu m$. Band M15 is sensitive to the emissivity properties of surfaces and helps distinguish red clay from arid grassland. The GREEN band is NDVI, which makes vegetation very visible. Last, the BLUE band is NDSI, which separates snow from clouds and vegetation, and incidentally distinguishes exposed and rocky areas from vegetation and grassland better than the truecolor.
+Figure \ref{p3_selection_rgbs} displays the RGBs I used to pick samples for pixel classes, the first image is an equalized truecolor image with bands M05, M04, and M03. The second image is a histogram-enhanced custom recipe of band M15, M07-M05 NDVI, and M10-M04 NDSI, which I created in order to easily distinguish clouds and multiple surface types, and the third image is a gamma-enhanced day-cloud phase RGB adaptation of the GOES ABI recipe using bands M09, M05, and M10. The RED band of my custom RGB is M15, which has a peak wavelength near $10.8\mu m$. Band M15 is sensitive to the emissivity properties of surfaces and helps distinguish red clay from arid grassland. The GREEN band is NDVI, which makes vegetation very visible. Last, the BLUE band is NDSI, which separates mountain top snow from bare rock and vegetation, and incidentally distinguishes exposed and rocky areas from vegetation and grassland better than the truecolor.
 
 In order to choose sample pixels, I developed a GUI tool with OpenCV2 that that allows the user to select and deselect individual pixels for each category, and cycles through provided RGB recipes so that the user can select samples with the RGB that best resolves each category.
 
@@ -349,6 +420,18 @@ In order to choose sample pixels, I developed a GUI tool with OpenCV2 that that 
 %    \caption{Covariance matrix and eigenvalues ($\lambda$) and normalized eigenvector components ($\vec{v})$ used for principle component analysis of my region.}
 %\end{figure}
 
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.6\linewidth]{figures/p7/pca_4+6+8_eq.png}
+
+    \vspace{.2em}
+    \includegraphics[width=.4\linewidth]{figures/p7/pca_0+3+5_eq.png}
+    \includegraphics[width=.4\linewidth]{figures/p7/region_M05+M07+M15.png}
+    \caption{Principle component analysis results. The fist image was generated using only bands M05, M07, and M15, and the second shows 3 of the 9 components found when all 9 bands were used for PCA. The third image is a normalized RGB of bands M05, M07, and M15. Compared to the original composite, the 3-band image is good at resolving clouds and multiple surface types, but still doesn't easily isolate water or vegetation types, and the all-band components I chose are skillful at distinguishing vegetation types and surface texture, but fails to clearly distinguish clouds from mountain vegetation. Judging by the color distribution of the 3-band image, the red component appears to scale positively with highly vegetated surfaces and negatively with clouds, the green band correlates with cloud cover and vegetation, and the blue band correlates with bare ground.}
+    \label{p7_results}
+\end{figure}
+
 \begin{figure}[h!]
     \begin{center}
     $
@@ -370,18 +453,6 @@ In order to choose sample pixels, I developed a GUI tool with OpenCV2 that that 
     \label{p7_cov_ev}
 \end{figure}
 
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=.6\linewidth]{figures/p7/pca_4+6+8_eq.png}
-
-    \vspace{.2em}
-    \includegraphics[width=.4\linewidth]{figures/p7/pca_0+3+5_eq.png}
-    \includegraphics[width=.4\linewidth]{figures/p7/region_M05+M07+M15.png}
-    \caption{Principle component analysis results. The fist image was generated using only bands M05, M07, and M15, and the second shows 3 of the 9 components found when all 9 bands were used for PCA. The third image is a normalized RGB of bands M05, M07, and M15. Compared to the original composite, the 3-band image is good at resolving clouds and multiple surface types, but still doesn't easily isolate water or vegetation types, and the all-band components I chose are skillful at distinguishing vegetation types and surface texture, but fails to clearly distinguish clouds from mountain vegetation. Judging by the color distribution of the 3-band image, the red component appears to scale positively with highly vegetated surfaces and negatively with clouds, the green band correlates with cloud cover and vegetation, and the blue band correlates with bare ground.}
-    \label{p7_results}
-\end{figure}
-
 \clearpage
 
 \subsection{Edge detection}
@@ -394,7 +465,7 @@ In order to choose sample pixels, I developed a GUI tool with OpenCV2 that that 
     \vspace{.2em}
     \includegraphics[width=.48\linewidth]{figures/p8/aster_diagonal1.png}
     \includegraphics[width=.48\linewidth]{figures/p8/aster_diagonal2.png}
-    \caption{ASTER image after application of vertical, horizontal, forward diagonal, and back diagonal filters, respectively. Fine structures are much easier to identify when they run parallel to an edge filter's kernel. For example, the vertical lines of the harbor are easier to resolve in the vertically-filter image, and the San Mateo-Hayward Bridge is easiest to identify in the images filtered with horizontal and forward-diagonal kernels.}
+    \caption{ASTER image after application of vertical, horizontal, forward diagonal, and back diagonal filters, respectively. Fine structures are much easier to identify when they run parallel to an edge filter's kernel. For example, the vertical lines of the harbor are easier to resolve in the vertically-filtered image, and the San Mateo-Hayward Bridge is easiest to identify in the images filtered with horizontal and forward-diagonal kernels.}
     \label{p8_edgesteps}
 \end{figure}
 
@@ -406,7 +477,7 @@ In order to choose sample pixels, I developed a GUI tool with OpenCV2 that that 
     \includegraphics[width=.48\linewidth]{figures/p8/aster_sequential.png}
     \includegraphics[width=.48\linewidth]{figures/p8/aster_multi.png}
 
-    \caption{Original ASTER image, edge detection using consecutive application of filters, histogram-equalized edge detection using each filter applied independently, then combined with euclidean distance in the same manner as the Sobel operator. Both edge detection methods appear to be effective since the edges of structures are much easier to resolve than in the original image, but even after histogram equalization the image generated with sequentially-applied filters appears noisier and more difficult to resolve than the euclidean distance scheme.}
+    \caption{Original ASTER image, histogram-equalized edge detection using consecutive application of filters, histogram-equalized edge detection using each filter applied independently, then combined with euclidean distance in the same manner as the Sobel operator. Both edge detection methods appear to be effective since the edges of structures are much easier to resolve than in the original image, but even after histogram equalization the image generated with sequentially-applied filters appears noisier and more difficult to resolve than the euclidean distance scheme.}
     \label{p8_edgeresults}
 \end{figure}
 
@@ -447,7 +518,7 @@ In order to choose sample pixels, I developed a GUI tool with OpenCV2 that that 
         \hline
         0.7125 & 0.0570 & 0.5041 & 0.0079 \\
     \end{tabular}
-    \caption{Statistics for masked NDVI values.}
+    \caption{Statistics for unmasked NDVI values.}
     \label{p9_stats}
 \end{figure}
 
@@ -477,7 +548,7 @@ Figure \ref{p9_landsat} displays my results as an HSV-mapped RGB with gamma enha
     \centering
     \includegraphics[width=.45\linewidth]{figures/p11/amazon_my_candidates.png}
     \includegraphics[width=.45\linewidth]{figures/p11/amazon_my_fires.png}
-    \caption{Pixels identified as fire candidates using custom thresholds, and subsequent pixels identified as fires with the F\&C confirmation methodology. When selecting pixel candidates, I decreased the SWIR lower bound from $314K$ to $311K$, decreased the SWIR-LWIR difference threshold to $8K$, decreased the upper bound of NIR reflectivity to $10 \%$, and set a new lower bound of $280 K$ on the LWIR threshold. I chose these values to better approximate the locations of the relatively isolated red pixels in my fire RGB, as the standard F\&C method demonstrated in Figure \ref{p11_fc} seemed to classify fires far too generously. The only significant differences between the pixel candidates my threshold selected and the pixels confirmed to be fires are that some groupings of candidate pixels over the low-lying clouds in the bottom right were disqualified as fires by the F\&C algorithm. I believe these changes were necessary because I substituted AVHRR band 2 ($.725-1.0\mu m$) for the average reflectance of MODIS bands 4, 3, and 1 ($.459-.670\mu m$ in total) since no NIR bands were available in the L1b granule I used. The $.8-1\mu m$ edge of the blackbody radiance curve for a $1000K$ fire is small, but much greater than in the visible range, and NIR wavelengths are attenuated less by Rayleigh scattering than in the visible spectrum. Either or both of these factors may have contributed to decreasing observed radiance in the MODIS visible bands compared to AVHRR band 2, which warrants decreasing the reflectivity threshold. Ultimately, 928 pixels were positively identified as fires using my custom thresholds.}
+    \caption{Pixels identified as fire candidates using custom thresholds, and subsequent pixels identified as fires with the F\&C confirmation methodology. When selecting pixel candidates, I decreased the SWIR lower bound from $314K$ to $311K$, decreased the SWIR-LWIR difference threshold to $8K$, decreased the upper bound of NIR reflectivity to $10 \%$, and set a new lower bound of $280 K$ on the LWIR threshold. I chose these values to better approximate the locations of the relatively isolated red pixels in my fire RGB, as the standard F\&C method demonstrated in Figure \ref{p11_fc} seemed to classify fires far too generously. The only significant differences between the pixel candidates my thresholds selected and the pixels confirmed to be fires are that some groupings of candidate pixels over the low-lying clouds in the bottom right were disqualified as fires by the F\&C algorithm. I believe these changes were necessary because I substituted AVHRR band 2 ($.725-1.0\mu m$) for the average reflectance of MODIS bands 4, 3, and 1 ($.459-.670\mu m$ in total) since no NIR bands were available in the L1b granule I used. The $.8-1\mu m$ edge of the blackbody radiance curve for a $1000K$ fire is small, but much greater than in the visible range, and NIR wavelengths are attenuated less by Rayleigh scattering than in the visible spectrum. Either or both of these factors may have contributed to decreasing observed radiance in the MODIS visible bands compared to AVHRR band 2, which warrants decreasing the reflectivity threshold. Ultimately, 928 pixels were positively identified as fires using my custom thresholds.}
     \label{p11_my}
 \end{figure}
 
@@ -491,7 +562,7 @@ Figure \ref{p9_landsat} displays my results as an HSV-mapped RGB with gamma enha
     \includegraphics[width=.48\linewidth]{figures/p12/fft_filtered_radiuslow.png}
     \includegraphics[width=.48\linewidth]{figures/p12/fft_filtered_radiushigh.png}
     \includegraphics[width=.48\linewidth]{figures/p12/fft_filtered_reconstruction.png}
-    \caption{Original noisy image, noisy image with a radius filter (F1) removing middle-frequency values, noisy image with a radius filter removing highest and lowest-frequency values (F2), and a denoised reconstruction. I manually selected the phase space regions to remove for each filter with an OpenCV2-based GUI tool that I built. After the filters were applied, I generated the reconstruction by normalizing the F1 brightness array to $[0,1]$, then using restricting F1 to a lower-bound threshold of $.078$ to identify and mask noise pixels. Finally, I replaced the masked pixels in the noisy image with the pixel values smoothed by F2. The resulting reconstruction still has residual noise since F2 only ``smears'' the noisy pixels, but the denoised image is visibly smoother.}
+    \caption{Original noisy image, noisy image with a radius filter removing middle-frequency values (F1), noisy image with a radius filter removing highest and lowest-frequency values (F2), and a denoised reconstruction. I implemented FFT and inverse FFT with the Cooley-Turkey algorithm, which required me to use bilinear interpolation to stretch the image to the nearest power of 2 side length (1024). After converting the image to phase space, I manually selected the frequency regions to remove for each filter with an OpenCV2-based GUI tool that I built. Once the filters were applied, I generated the reconstruction by normalizing the F1 brightness array to $[0,1]$, then using restricting F1 to a lower-bound threshold of $.078$ to identify and mask noise pixels. Finally, I replaced the masked pixels in the noisy image with the pixel values smoothed by F2. The resulting reconstruction still has residual noise since F2 only ``smears'' the noisy pixels, but the denoised image is visibly smoother.}
     \label{p11_fc}
 \end{figure}
 
@@ -499,12 +570,12 @@ Figure \ref{p9_landsat} displays my results as an HSV-mapped RGB with gamma enha
 
 \section{Code comment}
 
-One of my major goals for graduate school is to develop code I write for homework and research into a highly generalized and modular python codebase. To that end, I wrote more than 3,000 lines of python for this assignment as a series of modules that can be imported as a python package. All the figures in this document were generated with small scripts importing the high-level methods contained in the modules. My code is available on github with the link below.
+One of my major goals for graduate school is to develop code I write for homework and research into a highly generalized and modular python codebase with a minimal number of dependencies. To that end, I wrote more than 3,000 lines of python for this assignment as a series of modules that can be imported as a python package, which I merged with a package I previously wrote to work with ABI data. All figures and analysis in this document was performed using relatively small scripts importing the high-level methods contained in the package. My code is available on github with the link below.
 
 \vspace{1em}
 
 \begin{center}
-    \textsc{https://github.com/Mitchell-D/aes670hw2/}
+    \url{https://github.com/Mitchell-D/aes670hw2/}
 \end{center}
 
 \vspace{1em}
@@ -515,12 +586,16 @@ One of my major goals for graduate school is to develop code I write for homewor
 \begin{itemize}
     \item{Search the MODAPS-LAADS DAAC (LWS API) for any available product, and narrow search by illumination, geographic range, and a target time or time range, and download products that match the conditions.}
     \item{Process MODIS and VIIRS L1b data and georeference arrays into geographically-specified subgrids of a requested set of bands.}
+    \item{Query the NOAA AWS bucket for GOES East or GOES West ABI L1b data at a target time, and download a prespecified set of bands.}
+    \item{Process ABI data to fit a region specified geographically or in pixel coordinates.}
     \item{GUI tools for manually selecting sub-regions, picking pixel categories from RGBs, selecting parameter values for arbitrary enhancement functions (linear gamma, contrast stretch, noise filters) using a sliding bar and a live-rendered image, and manually removing specific regions in the phase space of an array with a click-and-drag function.}
-    \item{All classification and filtering algorithms, with standardized inputs and outputs.}
+    \item{Georeference and generate arrays of viewing and solar zenith angles for any geostationary satellite given basic information on the Sun/Earth/satellite geometry.}
+    \item{Custom implementations of all classification and filtering algorithms, with standardized inputs and outputs.}
     \item{Methods for procedurally rasterizing markers, boxes, and circles, and text onto an ndarray using geographic or pixel-coordinate reference.}
     \item{Destripe and perform bowtie-correction on arbitrary pixel grids.}
     \item{Calculate and print a variety of statistical features for a provided array.}
-    \item{Generalized methods for plotting data in a variety of formats (histograms, heatmaps, projected rasters, raw images, etc).}
+    \item{Generalized methods for plotting data in a variety of formats (histograms, heatmaps, projected rasters, raw images).}
+    \item{Library of methods encoding recipes for a wide range of common RGBs (truecolor, day/night cloud phase, differential water vapor, air mass, etc).}
 \end{itemize}
 
 \end{document}
