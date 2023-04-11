@@ -8,7 +8,6 @@ from aes670hw2 import guitools as gt
 from aes670hw2 import geo_helpers
 from aes670hw2 import geo_plot as gp
 from aes670hw2 import enhance
-from aes670hw2 import imstat
 
 """ General settings """
 debug = True
@@ -95,7 +94,7 @@ if generate_region_indicator:
         X = np.ma.masked_where(data[i]>400, data[i])
         X = enhance.vertical_nearest_neighbor(X, debug=debug)
         if hist_equalize:
-            X, _, _ = imstat.histogram_equalize(X, nbins=nbins, debug=debug)
+            X, _, _ = enhance.histogram_equalize(X, nbins=nbins, debug=debug)
         X = enhance.norm_to_uint(X, 256, cast_type=np.uint8)
         indicator_rgb.append(X)
 
@@ -116,7 +115,7 @@ region_rgb = []
 for i in range(len(band_indeces)):
     X = region[band_indeces[i]]
     if hist_equalize:
-        X, _, _ = imstat.histogram_equalize(X, nbins=nbins, debug=debug)
+        X, _, _ = enhance.histogram_equalize(X, nbins=nbins, debug=debug)
     region_rgb.append(enhance.norm_to_uint(X, 256, np.uint8))
 
 # Generate an RGB of the selected sub-region

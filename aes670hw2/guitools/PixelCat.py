@@ -56,15 +56,11 @@ class PixelCat:
                 label=f"Band {band} contrast slope: ",
                 debug=debug
                 )-100)/slope_scale)
-        print(contrast)
-        print(enhance.array_stat(self.band(band)))
         if set_band:
             print("Setting band")
             band_idx = self._bands.index(band)
             self._arrays[band_idx] = enhance.linear_contrast(
                     self.band(band), contrast, offset)
-        print(enhance.array_stat(self.band(band)))
-        print()
         return contrast
 
     def pick_band_scale(self, band:str, set_band:bool=False):
@@ -134,7 +130,7 @@ class PixelCat:
                     self.band(band), choice), band=band, replace=True)
         return choice
 
-    def pick_gamma(self, band:str, gamma_scale=.25, set_band:bool=False,
+    def pick_gamma(self, band:str, gamma_scale=1, set_band:bool=False,
                    debug=False):
         """
         Choose a gamma value for a single using the gui trackbar selector.
@@ -155,7 +151,7 @@ class PixelCat:
                 self.band(band), choice), band=band, replace=True)
         return choice
 
-    def get_rgb(self, bands:list, recipes:list=None, show=True,
+    def get_rgb(self, bands:list, recipes:list=None, show=False,
                 normalize:bool=False, debug=False):
         """
         Compile a (M,N,3)-shaped RGB numpy array of bands corresponding to
@@ -164,7 +160,6 @@ class PixelCat:
         arrays, so unless a recipe is provided
         """
         # Verify 3 valid band labels were provided in the list
-        print(bands, self._bands)
         assert len(bands) == 3 and all([ b in self._bands for b in bands ])
         # Verify that if recipes were provided, they are 3 functions.
         assert not recipes or len(recipes) == 3 and \

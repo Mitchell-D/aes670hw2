@@ -18,7 +18,7 @@ from aes670hw2 import laads
 from aes670hw2 import viirs
 from aes670hw2 import guitools as gt
 from aes670hw2 import geo_helpers
-from aes670hw2 import imstat
+#from aes670hw2 import imstat
 from aes670hw2 import PixelCat
 
 """ Settings """
@@ -75,7 +75,7 @@ gp.generate_raw_image(rgb, contrast_rgb_path)
 nbins = 512
 histograms = []
 for i in range(len(tc_bands)):
-    histograms.append(imstat.do_histogram_analysis(
+    histograms.append(enhance.do_histogram_analysis(
         pc.band(tc_bands[i]), nbins, equalize=False, debug=debug))
     histograms[i].update({"band":tc_bands[i]})
 

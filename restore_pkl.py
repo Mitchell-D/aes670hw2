@@ -13,7 +13,7 @@ from aes670hw2 import laads
 from aes670hw2 import viirs
 from aes670hw2 import guitools as gt
 from aes670hw2 import geo_helpers
-from aes670hw2 import imstat
+#from aes670hw2 import imstat
 
 # VIIRS
 image_url = "https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/archives/"+\

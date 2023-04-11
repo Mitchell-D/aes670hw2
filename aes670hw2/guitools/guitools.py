@@ -165,7 +165,6 @@ def trackbar_select(X:np.ndarray, func, label="", resolution:int=256,
         nonlocal selection
         selection = user_value
         tmp_X = np.copy(X)
-        print(tmp_X.shape, selection)
         rendered = func(tmp_X, selection)
         cv.imshow(wname, rendered)
 
@@ -179,7 +178,6 @@ def trackbar_select(X:np.ndarray, func, label="", resolution:int=256,
     while True:
         if cv.waitKey(1) & 0xFF == ord("q"):
             cv.destroyAllWindows()
-            print(selection)
             return selection
 
 def region_select(X:np.ndarray, show_selection:bool=False, debug=False):

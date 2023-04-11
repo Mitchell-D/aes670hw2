@@ -18,7 +18,7 @@ from aes670hw2 import laads
 from aes670hw2 import viirs
 from aes670hw2 import guitools as gt
 from aes670hw2 import geo_helpers
-from aes670hw2 import imstat
+#from aes670hw2 import imstat
 from aes670hw2 import PixelCat
 
 """ Settings """
@@ -79,7 +79,7 @@ truecolor_bands = ["M05", "M04", "M03"]
 print(f"\033[93mEqualized truecolor composite of bands \033[0m\033[1m " + \
         "{truecolor_bands}\033[0m")
 eq_and_norm = lambda X: enhance.norm_to_uint(
-        imstat.histogram_equalize(X, nbins)[0], 256, np.uint8)
+        enhance.histogram_equalize(X, nbins)[0], 256, np.uint8)
 noeq_recipe = lambda X: enhance.norm_to_uint(X, 256, np.uint8)
 
 #pc.get_rgb(bands=truecolor_bands, recipes=[noeq_recipe for i in range(3)])

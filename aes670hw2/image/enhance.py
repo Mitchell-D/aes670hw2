@@ -393,7 +393,9 @@ def histogram_equalize(X:np.ndarray, nbins:int,
     hist_constant = (nbins-1)/X.size
     hist_scale = hist_constant*c_hist
     if debug: print(f"Equalizing histogram with scale {hist_constant}")
-    Y = np.vectorize(lambda px: c_hist[px])(norm_to_uint(X, nbins))
+    normed = norm_to_uint(X, nbins)
+    Y = np.vectorize(lambda px: c_hist[px])(normed)
+    #Y = np.vectorize(lambda px: hist_scale[px])(normed)
     return Y, bin_size, Xmin
 
 def linear_contrast(X:np.ndarray, a:float=1, b:float=0, debug=False):

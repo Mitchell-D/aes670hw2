@@ -62,7 +62,7 @@ def mlc(X:np.ndarray, categories:dict):
     return classified, cat_keys
 
 def k_means(X:np.ndarray, cluster_count:int, tolerance=1e-3,
-            debug:bool=False):
+            get_sse:bool=False, debug:bool=False):
     """
     Perform k-means clustering on the input dataset with a provided number
     of clusters and a decimal tolerance for cluster mean equality.
@@ -74,14 +74,18 @@ def k_means(X:np.ndarray, cluster_count:int, tolerance=1e-3,
     def new_centroid():
         """ Randomize centroid locations"""
         nonlocal X
+        #return np.random.rand(X.shape[2])
+        #'''
         rand_y = np.random.randint(0, X.shape[0])
         rand_x = np.random.randint(0, X.shape[1])
         return X[rand_y, rand_x]
+        #'''
 
     # Pick random pixels to initialize the means
     centroids = [ new_centroid() for c in range(cluster_count) ]
     all_valid = False
     pc_pass = 0
+    sse = [] # sum of squared error
     while not all_valid:
         '''
         if any([ np.any(np.isnan(c)) for c in centroids ]):
@@ -90,6 +94,7 @@ def k_means(X:np.ndarray, cluster_count:int, tolerance=1e-3,
             centroids = [ new_centroid() for c in range(cluster_count) ]
         elif pc_pass != 0:
         '''
+        tmp_sse = 0
         for c in range(cluster_count):
             if np.all(np.isnan(centroids[c])):
                 centroids[c] = new_centroid()
@@ -110,6 +115,8 @@ def k_means(X:np.ndarray, cluster_count:int, tolerance=1e-3,
                 cidx = np.argmin(px_mean)
                 clusters[cidx].append(X[i,j])
                 cluster_idx[cidx].append((i,j))
+                if get_sse:
+                    tmp_sse += np.linalg.norm(X[i,j]-centroids[cidx])**2
         # Collect centroid pixels
         for c in range(cluster_count):
             # Average all pixels in each centroid per band
@@ -118,6 +125,9 @@ def k_means(X:np.ndarray, cluster_count:int, tolerance=1e-3,
         all_valid = all([np.allclose(oldc,newc,tolerance) for oldc, newc
                          in zip(centroids, new_centroids)])
         centroids = new_centroids
+        if get_sse:
+            print(f"SSE: {tmp_sse}")
+            sse.append(tmp_sse)
     '''
     Y = np.zeros_like(X[:,:,0])
     for c in range(cluster_count):
@@ -125,7 +135,9 @@ def k_means(X:np.ndarray, cluster_count:int, tolerance=1e-3,
         for i,j in cluster_idx[c]:
             Y[i,j] = c
     '''
-    return cluster_idx
+    if not get_sse:
+        return cluster_idx
+    return cluster_idx, sse
 
 def pca(X:np.ndarray, print_table:bool=False):
     """
@@ -163,5 +175,6 @@ def pca(X:np.ndarray, print_table:bool=False):
         print(cov_string)
         print("Eigenvalue and Eigenvector table:")
         print(ev_string)
+
     return Y
 

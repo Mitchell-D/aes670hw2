@@ -38,6 +38,8 @@ plot_spec_default = {
     "border_width":0.5,
     "border_color":"black",
     "cmap":"nipy_spectral",
+    "grid":False,
+    "legend_font_size":6,
     "xlabel":"",
     "ylabel":"",
     "cb_orient":"vertical",
@@ -117,18 +119,14 @@ def plot_lines(domain:np.ndarray, ylines:list, image_path:Path=None,
     # Plot each
     fig, ax = plt.subplots()
     for i in range(len(ylines)):
-        ax.plot(
-                range(ylines[i].shape[0]),
-                ylines[i],
-                label=labels[i] if len(labels) else "",
-                linewidth=plot_spec.get("line_width")
-                )
+        ax.plot(domain, ylines[i], label=labels[i] if len(labels) else "",
+                linewidth=plot_spec.get("line_width"))
 
     ax.set_xlabel(plot_spec.get("xlabel"))
     ax.set_ylabel(plot_spec.get("ylabel"))
     ax.set_title(plot_spec.get("title"))
     if len(labels):
-        plt.legend()
+        plt.legend(fontsize=plot_spec.get("legend_font_size"))
     if show:
         plt.show()
     if not image_path is None:
@@ -136,12 +134,14 @@ def plot_lines(domain:np.ndarray, ylines:list, image_path:Path=None,
         fig.savefig(image_path, bbox_inches="tight", dpi=plot_spec.get("dpi"))
 
 
-def basic_plot(x, y, image_path:Path, plot_spec:dict={}, scatter:bool=False):
+def basic_plot(x, y, image_path:Path, plot_spec:dict={}, scatter:bool=False,
+               show:bool=False):
     fig, ax = plt.subplots()
     if scatter:
         ax.scatter(x,y)
     else:
         ax.plot(x,y)
+    ax.grid(visible=plot_spec.get("grid"))
 
     if plot_spec.get("xtick_rotation"):
         plt.tick_params(axis="x", **{"labelrotation":plot_spec.get(
@@ -150,11 +150,14 @@ def basic_plot(x, y, image_path:Path, plot_spec:dict={}, scatter:bool=False):
         plt.tick_params(axis="y", **{"labelrotation":plot_spec.get(
             "ytick_rotation")})
 
+    ax.set_yscale("log")
     plt.title(plot_spec.get("title"))
     plt.xlabel(plot_spec.get("xlabel"))
     plt.ylabel(plot_spec.get("ylabel"))
     print(f"Saving figure to {image_path}")
-    plt.savefig(image_path, bbox_inches="tight")
+    fig.savefig(image_path)
+    if show:
+        plt.show()
 
 def generate_raw_image(RGB:np.ndarray, image_path:Path, gif:bool=False,
                        fps:int=5):

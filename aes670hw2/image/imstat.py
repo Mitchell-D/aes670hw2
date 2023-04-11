@@ -1,7 +1,13 @@
+"""
+THIS MODULE IS DEPRICATED
+
+I'm only keeping it around for now because there are probably still
+imports hanging around. All methods here are now in the enhance module.
+"""
 
 import numpy as np
-from . import enhance
 
+'''
 def array_stat(X:np.ndarray):
     """
     Returns a dict of useful info about an array.
@@ -41,8 +47,10 @@ def get_pixel_counts(X:np.ndarray, nbins, debug=False):
     for px in X:
         counts[px] += 1
     return counts, bin_size, Xmin
+'''
 
 
+'''
 def get_cumulative_hist(X:np.ndarray, nbins:int, debug=False):
     """
     Get a cumulative array of binned pixel values for equalization
@@ -100,7 +108,9 @@ def histogram_equalize(X:np.ndarray, nbins:int,
     if debug: print(f"Equalizing histogram with scale {hist_constant}")
     Y = np.vectorize(lambda px: c_hist[px])(enhance.norm_to_uint(X, nbins))
     return Y, bin_size, Xmin
+'''
 
+'''
 def linear_contrast(X:np.ndarray, nbins:int, a:float=1, b:float=0,
                     debug=False):
     """
@@ -126,8 +136,10 @@ def saturated_linear_contrast(X:np.ndarray, nbins:int, lower_sat_pct:float=0,
 
 
 #def log_contrast(X:np.ndarray, )
+'''
 
 
+'''
 def do_histogram_analysis(X:np.ndarray, nbins:int, equalize:bool=False,
                           debug=False):
     """
@@ -160,3 +172,4 @@ def do_histogram_analysis(X:np.ndarray, nbins:int, equalize:bool=False,
 
     return hist_dict
 
+'''

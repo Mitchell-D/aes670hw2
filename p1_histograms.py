@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 from aes670hw2 import geo_plot as gp
 from aes670hw2 import enhance
-from aes670hw2 import imstat
+#from aes670hw2 import imstat
 from aes670hw2 import geo_helpers
 
 debug = False
@@ -42,7 +42,7 @@ geo = [ G[lat_range[0]:lat_range[1],lon_range[0]:lon_range[1]] for G in geo ]
 """ Get Frequency histogram and an equalized array for each band """
 histograms = []
 for i in range(len(data)):
-    histograms.append(imstat.do_histogram_analysis(
+    histograms.append(enhance.do_histogram_analysis(
         data[i], nbins, equalize=True, debug=debug))
     histograms[i].update({"band":info["bands"][i]})
 
@@ -102,7 +102,7 @@ gp.generate_raw_image(
 """ Get a frequency and cumulative histogram for the corected image """
 equalized_hists = []
 for i in range(len(equalized)):
-    equalized_hists.append(imstat.do_histogram_analysis(
+    equalized_hists.append(enhance.do_histogram_analysis(
         equalized[i], nbins, equalize=False, debug=debug))
     equalized_hists[i].update({"band":info["bands"][i]})
 
@@ -168,7 +168,7 @@ geo = [ G[lat_range[0]:lat_range[1],lon_range[0]:lon_range[1]] for G in geo ]
 """ Get Frequency histogram and an equalized array for each band """
 histograms = []
 for i in range(len(data)):
-    histograms.append(imstat.do_histogram_analysis(
+    histograms.append(enhance.do_histogram_analysis(
         data[i], nbins, equalize=True, debug=debug))
     histograms[i].update({"band":info["bands"][i]})
 
@@ -216,7 +216,7 @@ equalized = [
 
 equalized_hists = []
 for i in range(len(equalized)):
-    equalized_hists.append(imstat.do_histogram_analysis(
+    equalized_hists.append(enhance.do_histogram_analysis(
         equalized[i], nbins, equalize=False, debug=debug))
     equalized_hists[i].update({"band":info["bands"][i]})
 

@@ -89,15 +89,21 @@ if __name__=="__main__":
     #latlon = (-42.20, 146.62)# Tazmania
     #latlon = (12.09, -47.2)# Tazmania
     #latlon = (36.97, -86.456) # Bowling Green
-    latlon = (30.95, 31.09) # Nile Delta
+    #latlon = (30.95, 31.09) # Nile Delta
+    #latlon = (-44.06, 169.84) # New Zealand, Southern Alps
+    #latlon = (34.584, -4.063) # Morocco
+    #latlon = (-2.828, 33.446) # Serengeti
+    latlon = (-5, 26) # Midterm location
     pkl_path = Path("data/pkls/ez_naturalcolor.pkl")
     fig_dir = Path("figures/test")
     #xres, yres = (2096, 1179)
-    xres, yres = (1920, 1080)
+    #xres, yres = (3000, 3000)
+    #xres, yres = (1920, 1080)
+    xres, yres = (640*2, 512*2)
     dx = int(xres)
     dy = int(yres)
-    target_time=dt.utcnow()-td(days=2, hours=12)
-    #target_time=dt(year=2016, month=1, day=3, hour=17)
+    #target_time=dt.utcnow()
+    target_time=dt(year=2022, month=9, day=8, hour=11)
     file_template = "{atime}_{satellite}_naturalcolor.png"
     satellite = "NP"
 

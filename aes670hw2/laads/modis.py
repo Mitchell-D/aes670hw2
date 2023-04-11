@@ -8,13 +8,16 @@ import json
 import netCDF4 as nc
 import gc
 import numpy as np
+import math as m
 from pathlib import Path
 import pickle as pkl
 from datetime import datetime as dt
 from datetime import timedelta as td
 from pyhdf.SD import SD, SDC
+from PIL import Image
 
 from . import laads
+from . import modis_rsrs
 
 l2_products = {
         'aod1':'1km Atmospheric Optical Depth Band 1',
@@ -33,26 +36,26 @@ l2_products = {
         'R5_500':'500m Surface Reflectance Band 5',
         'R6_500':'500m Surface Reflectance Band 6',
         'R7_500':'500m Surface Reflectance Band 7',
-        'R1_1000':'1km Surface Reflectance Band 1',
-        'R2_1000':'1km Surface Reflectance Band 2',
-        'R3_1000':'1km Surface Reflectance Band 3',
-        'R4_1000':'1km Surface Reflectance Band 4',
-        'R5_1000':'1km Surface Reflectance Band 5',
-        'R6_1000':'1km Surface Reflectance Band 6',
-        'R7_1000':'1km Surface Reflectance Band 7',
-        'R8_1000':'1km Surface Reflectance Band 8',
-        'R9_1000':'1km Surface Reflectance Band 9',
-        'R10_1000':'1km Surface Reflectance Band 10',
-        'R11_1000':'1km Surface Reflectance Band 11',
-        'R12_1000':'1km Surface Reflectance Band 12',
-        'R13_1000':'1km Surface Reflectance Band 13',
-        'R14_1000':'1km Surface Reflectance Band 14',
-        'R15_1000':'1km Surface Reflectance Band 15',
-        'R16_1000':'1km Surface Reflectance Band 16',
-        'R26_1000':'1km Surface Reflectance Band 26',
-        'T20_1000':'BAND20',
-        'T31_1000':'BAND31',
-        'T32_1000':'BAND32',
+        'R1_1000':'1km Surface Reflectance Band 1', # .620-.670um
+        'R2_1000':'1km Surface Reflectance Band 2', # .841-.876um
+        'R3_1000':'1km Surface Reflectance Band 3', # .459-.479um # Blue
+        'R4_1000':'1km Surface Reflectance Band 4', # .535-.565um
+        'R5_1000':'1km Surface Reflectance Band 5', # 1.230-1.250um
+        'R6_1000':'1km Surface Reflectance Band 6', # 1.628-1.652um # Cloud phase; ice absorbs
+        'R7_1000':'1km Surface Reflectance Band 7', # 2.105-2.155um # Particle size; larger less reflective.
+        'R8_1000':'1km Surface Reflectance Band 8', # .405-.420um
+        'R9_1000':'1km Surface Reflectance Band 9', # .438-.448um
+        'R10_1000':'1km Surface Reflectance Band 10', # .483-.448um # Cyan
+        'R11_1000':'1km Surface Reflectance Band 11', # .526-.536um
+        'R12_1000':'1km Surface Reflectance Band 12', # .546-.556um # Green, less chlorophyll absorption
+        'R13_1000':'1km Surface Reflectance Band 13', # .662-.672um # Short Red
+        'R14_1000':'1km Surface Reflectance Band 14', # .674-.683um # Mid Red, chlorophyll absorption
+        'R15_1000':'1km Surface Reflectance Band 15', # .743-.753um # Long Red
+        'R16_1000':'1km Surface Reflectance Band 16', # .862-.877um # Veggie NIR
+        'R26_1000':'1km Surface Reflectance Band 26', # 1.36-1.39um # Cirrus band
+        'T20_1000':'BAND20', # 3.66-3.84um # SWIR magic band. Fires, LST, ref & emit
+        'T31_1000':'BAND31', # 10.78-11.28um # Clean LWIR window
+        'T32_1000':'BAND32', # 11.77-12.27um # Dirty-ish LWIR window
         'latitude':'Latitude',
         'longitude':'Longitude',
         'R20_albedo':'BAND20ALBEDO',
@@ -85,6 +88,45 @@ def sat_to_l2key(satellite):
         raise ValueError(f"MODIS L2 satellite must be one of {valid}")
     return ["MYD09", "MOD09"][satellite == "terra"]
 
+def query_modis_l1b(product_key:str, start_time:dt, end_time:dt,
+                   latlon:tuple=None, archive=None, day_only:bool=False,
+                   debug:bool=False):
+    """
+    Query the LAADS DAAC for MODIS L2 MOD021KM (Terra) and MYD021KM (Aqua)
+    calibrated surface reflectance and select brightness temperatures.
+    Instead of 1KM (for 1km resolution), products may use HKM or QKM
+    substrings for half-kilometer and quarter-kilometer resolution bands,
+    respectively.
+
+    :@param product_key: One of the listed VIIRS l1b product keys
+    :@param start_time: Inclusive start time of the desired range. Only files
+            that were acquired at or after the provided time may be returned.
+    :@param end_time: Inclusive end time of the desired range. Only files
+            that were acquired at or before the provided time may be returned.
+    :@param archive: Some products have multiple archives, which seem to be
+            identical. If archive is provided and is a validarchive set,
+            uses the provided value. Otherwise defualts to defaultArchiveSet
+            as specified in the product API response.
+
+    :@return: A list of dictionaries containing the aquisition time of the
+            granule, the data granule download link, and optionally the
+            download link of the geolocation file for the granule.
+    """
+    valid = {"MOD021KM", "MYD021KM", "MOD02QKM", "MYD02QKM",
+             "MOD02HKM", "MYD02HKM"}
+    if product_key not in valid:
+        raise ValueError(f"Product key must be one of: {valid}")
+
+    products = laads.query_product(product_key, start_time, end_time, latlon,
+                                   archive=archive, debug=debug)
+    for i in range(len(products)):
+        products[i].update({"atime":parse_modis_time(Path(
+                    products[i]['downloadsLink']))})
+    products = [ p for p in products
+            if p["illuminations"] == "D" or not day_only ]
+
+    return list(sorted(products, key=lambda p:p["atime"]))
+
 def query_modis_l2(product_key:str, start_time:dt, end_time:dt,
                    latlon:tuple=None, archive=None, day_only:bool=False,
                    debug:bool=False):
@@ -97,8 +139,6 @@ def query_modis_l2(product_key:str, start_time:dt, end_time:dt,
             that were acquired at or after the provided time may be returned.
     :@param end_time: Inclusive end time of the desired range. Only files
             that were acquired at or before the provided time may be returned.
-    :@param add_geo: If True, queries LAADS for the geolocation product and
-            includes the download link of the result
     :@param archive: Some products have multiple archives, which seem to be
             identical. If archive is provided and is a validarchive set,
             uses the provided value. Otherwise defualts to defaultArchiveSet
@@ -132,42 +172,167 @@ def validate_l2_bands(bands:tuple):
         raise ValueError(f"Bands {invalid} are an invalid. Keys " + \
                 "Must be one of {l2_products.keys()}")
 
-
-def get_modis_data(l2_file:Path, bands:tuple, debug=False):
+def band_to_wl(band:int):
     """
-    Opens a MOD09 (Terra) or MYD09 (Aqua) L2 corrected reflectance/emission
-    granule file and parses the requested bands.
+    Returns the central wavelength of the integer band in um by finding
+    the weighted mean wavelength of the spectral response.
 
-    :@param l2_file: Path to level 2 hdf4 file, probably from the laads daac.
-    :@param bands: Band key defined in l2_products dictionary.
+    Spectral response functions provided by:
+    https://nwp-saf.eumetsat.int/downloads/rtcoef_rttov13/ir_srf/rtcoef_eos_1_modis_srf/
+    """
+    rsr_dict = modis_rsrs.MODIS_RSRs[band]
+    wl = rsr_dict["wavelength"]
+    rsr = rsr_dict["rsr"]
+    mid_idx = np.argmin(np.abs(np.cumsum(np.array(rsr))-round(sum(rsr)/2)))
+    return wl[mid_idx]
+
+
+def get_modis_data(datafile:Path, bands:tuple,
+                   l1b_convert_reflectance:bool=True,
+                   l1b_convert_tb:bool=True, debug=False):
+    """
+    Opens a Terra or Aqua L1b calibrated radiances or L2 atmospherically-
+    corrected reflectance/emission granule file, and parses the
+    requested bands based on keys defined in dictionaries above.
+
+    The values returned by this method are contingent on the file type
+    provided to datafile.
+
+    For l1b files:
+    sunsat and geolocation data is bilinear-interpolated from a 5x5 subsampled
+    grid. By default reflectance bands are converted to BRDF and thermal
+    bands are left as radiances.
+
+    :@param datafile: Path to level 1b or level 2 hdf4 file, probably from the
+            laads daac.
+    :@param bands: Band key defined in l2_products dictionary if datafile is
+            a l2 path, or a valid MODIS band number.
     :return: (data, info, geo) 3-tuple. data is a list of ndarrays
             corresponding to each requested band, info is a list of data
             attribute dictionaries for the respective bands, and geo is a
             2-tuple (latitude, longitude) of the 1km data grid.
     """
-    validate_l2_bands(bands)
-    mod_sd = SD(l2_file.as_posix(), SDC.READ)
+    #validate_l2_bands(bands)
+    mod_sd = SD(datafile.as_posix(), SDC.READ)
+    data = []
+    info = []
+    # Awful way of determining if this is a l2 file, but this method is bound
+    # to the LAADS DAAC key naming scheme regardless.
+    is_l2 = any([ "Surface Reflectance" in k
+                 for k in mod_sd.datasets().keys()])
+    if is_l2:
+        """ L2 file parsing using l2_products band naming """
+        for b in bands:
+            name = l2_products[b]
+            tmp_sds = mod_sd.select(l2_products[b])
+            tmp_data = tmp_sds.get()
+            tmp_info = tmp_sds.attributes()
+            ndr = tmp_info["Nadir Data Resolution"]
+            tmp_info = {
+                    k:tmp_info[k] for k in("add_offset", "scale_factor",
+                                           "units", "valid_range")
+                    if k in tmp_info.keys()}
+            tmp_info["name"] = name
+            tmp_info["key"] = b
+            tmp_info["nadir_resolution"] = ndr
+            info.append(tmp_info)
+            # Scale the data with the provided values.
+            data.append((tmp_data+tmp_info["add_offset"])/tmp_info["scale_factor"])
+
+        geo = (mod_sd.select("Latitude").get(), mod_sd.select("Longitude").get())
+        return data, info, geo
+
+    """ 1km L1b file parsing """
+    # Get subsampled geolocation and sun/satellite geometry arrays
+    geo = [mod_sd.select("Latitude").get(),
+           mod_sd.select("Longitude").get(),
+           mod_sd.select("Height").get() ]
+    sunsat = [mod_sd.select("SolarZenith").get()*.01,
+              mod_sd.select("SolarAzimuth").get()*.01,
+              mod_sd.select("SensorZenith").get()*.01,
+              mod_sd.select("SensorAzimuth").get()*.01]
+
+    # Ridiculous 5x5 upscaling of geolocation data
+    _, h, w = mod_sd.select("EV_1KM_RefSB").get().shape
+    geo = [ np.array(Image.fromarray(X).resize(
+                size=(w,h), resample=Image.BILINEAR))
+            for X in geo]
+    sunsat = [ np.array(Image.fromarray(X).resize(
+                size=(w,h), resample=Image.BILINEAR))
+            for X in sunsat]
+
     data = []
     info = []
     for b in bands:
-        name = l2_products[b]
-        tmp_sds = mod_sd.select(l2_products[b])
-        tmp_data = tmp_sds.get()
-        tmp_info = tmp_sds.attributes()
-        ndr = tmp_info["Nadir Data Resolution"]
-        tmp_info = {
-                k:tmp_info[k] for k in("add_offset", "scale_factor",
-                                       "units", "valid_range")
-                if k in tmp_info.keys()}
-        tmp_info["name"] = name
-        tmp_info["key"] = b
-        tmp_info["nadir_resolution"] = ndr
-        info.append(tmp_info)
-        # Scale the data with the provided values.
-        data.append((tmp_data+tmp_info["add_offset"])/tmp_info["scale_factor"])
+        if b in mod_sd.select("Band_250M").get():
+            idx = list(mod_sd.select("Band_250M")).index(b)
+            tmp_sd = mod_sd.select("EV_250_Aggr1km_RefSB")
+            tmp_attrs = tmp_sd.attributes()
+            data.append(tmp_sd.get()[idx,:,:])
+        elif b in mod_sd.select("Band_500M").get():
+            idx = list(mod_sd.select("Band_500M")).index(b)
+            tmp_sd = mod_sd.select("EV_500_Aggr1km_RefSB")
+            tmp_attrs = tmp_sd.attributes()
+            data.append(mod_sd.select("EV_500_Aggr1km_RefSB").get()[idx,:,:])
+        elif b in mod_sd.select("Band_1KM_Emissive").get():
+            idx = list(mod_sd.select("Band_1KM_Emissive")).index(b)
+            tmp_sd = mod_sd.select("EV_1KM_Emissive")
+            tmp_attrs = tmp_sd.attributes()
+            data.append(mod_sd.select("EV_1KM_Emissive").get()[idx,:,:])
+        elif b in mod_sd.select("Band_1KM_RefSB").get():
+            idx = list(mod_sd.select("Band_1KM_RefSB")).index(b)
+            tmp_sd = mod_sd.select("EV_1KM_RefSB")
+            tmp_attrs = tmp_sd.attributes()
+            data.append(mod_sd.select("EV_1KM_RefSB").get()[idx,:,:])
+        elif b == 26:
+            idx = 0
+            tmp_sd = mod_sd.select("EV_Band26")
+            tmp_attrs = tmp_sd.attributes()
+            data.append(mod_sd.select("EV_Band26").get()[:,:])
+        else:
+            raise ValueError(f"Band {b} not found.")
 
-    geo = (mod_sd.select("Latitude").get(), mod_sd.select("Longitude").get())
-    return data, info, geo
+        # Construct a dictionary of attribute info for this band.
+        tmp_info = {
+                "band":b,
+                "units":tmp_attrs["radiance_units"],
+                "fill":tmp_attrs["_FillValue"],
+                "long_name":tmp_attrs["long_name"],
+                "valid_range": tmp_attrs["valid_range"],
+                "rad_scale":tmp_attrs["radiance_scales"][idx],
+                "rad_offset":tmp_attrs["radiance_offsets"][idx],
+                "is_reflective": "reflectance_units" in tmp_attrs.keys(),
+                "ctr_wl": band_to_wl(b)
+                }
+        # Use reflectance scale if converting to reflectance
+        if tmp_info["is_reflective"] and l1b_convert_reflectance:
+            tmp_info["ref_scale"] = tmp_attrs["reflectance_scales"][idx]
+            tmp_info["ref_offset"] = tmp_attrs["reflectance_offsets"][idx]
+            if b == 1:
+                print(tmp_info)
+            tmp_info["units"] = "Reflectance (BRDF)"
+            # Bidirectional reflectance factor (Petty 5.15)
+            # From l1b PUG p43, reflectance = rho*cos(sza)
+            data[-1] = (data[-1]-tmp_info["ref_offset"]) \
+                    * tmp_info["ref_scale"] / np.cos(np.deg2rad(sunsat[0]))
+        # Otherwise convert to radiance
+        else:
+            data[-1] = (data[-1]-tmp_info["rad_offset"])*tmp_info["rad_scale"]
+
+        # If emissive band and converting, use radiances and weighted rsr mean
+        # to estimate brightness temperature. Could do a discrete weighted sum
+        # along wavelength in the future to improve Tb estimate.
+        if not tmp_info["is_reflective"] and l1b_convert_tb:
+            # Rough brightness temp with inverse planck function
+            ctr_wl = tmp_info["ctr_wl"]
+            c1 = 1.191042e8 # W / (m^2 sr um^-4)
+            c2 = 1.4387752e4 # K um
+            # Get brightness temp with planck's function at the center wavelength
+            data[-1] = c2/(ctr_wl * np.log(c1/(ctr_wl**5 * data[-1]) + 1))
+            tmp_info["units"] = "Kelvin"
+
+        info.append(tmp_info)
+    return data, info, geo, sunsat
 
 def download_modis_granule(
         product_key, dest_dir:Path, token_file:Path, bands:tuple,
