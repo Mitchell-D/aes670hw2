@@ -213,7 +213,9 @@ def get_modis_data(datafile:Path, bands:tuple,
             2-tuple (latitude, longitude) of the 1km data grid.
     """
     #validate_l2_bands(bands)
+    print(datafile.exists())
     mod_sd = SD(datafile.as_posix(), SDC.READ)
+    print(mod_sd)
     data = []
     info = []
     # Awful way of determining if this is a l2 file, but this method is bound
@@ -261,6 +263,11 @@ def get_modis_data(datafile:Path, bands:tuple,
                 size=(w,h), resample=Image.BILINEAR))
             for X in sunsat]
 
+    if debug and l1b_convert_ref:
+        print("Converting to reflectance")
+    if debug and l1b_convert_tb:
+        print("Converting to brightness temperature")
+
     data = []
     info = []
     for b in bands:
@@ -302,7 +309,8 @@ def get_modis_data(datafile:Path, bands:tuple,
                 "rad_scale":tmp_attrs["radiance_scales"][idx],
                 "rad_offset":tmp_attrs["radiance_offsets"][idx],
                 "is_reflective": "reflectance_units" in tmp_attrs.keys(),
-                "ctr_wl": band_to_wl(b)
+                "ctr_wl": band_to_wl(b),
+                "product":datafile.stem.split(".")[0],
                 }
         # Use reflectance scale if converting to reflectance
         if tmp_info["is_reflective"] and l1b_convert_reflectance:

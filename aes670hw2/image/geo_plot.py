@@ -17,9 +17,12 @@ from PIL import Image
 
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolo
 import matplotlib.animation as animation
 from matplotlib.ticker import LinearLocator, StrMethodFormatter, NullLocator
 from cartopy.mpl.gridliner import LongitudeLocator, LatitudeLocator
+from matplotlib.transforms import Affine2D
+from matplotlib.patches import Patch
 
 plt.rcParams.update({
     "text.usetex": True,
@@ -30,7 +33,8 @@ plt.rcParams.update({
 
 plot_spec_default = {
     "title":"",
-    "title_size":8,
+    "title_size":14,
+    "label_size":12,
     "gridline_color":"gray",
     "fig_size":(16,9),
     "dpi":800,
@@ -39,9 +43,13 @@ plot_spec_default = {
     "border_color":"black",
     "cmap":"nipy_spectral",
     "grid":False,
-    "legend_font_size":6,
+    "legend_font_size":8,
+    "marker":"o",
+    "line_style":":",
+    "alpha":.5,
     "xlabel":"",
     "ylabel":"",
+    "yrange":None,
     "cb_orient":"vertical",
     "cb_label":"",
     "cb_tick_count":15,
@@ -56,6 +64,115 @@ plot_spec_default = {
     "xtick_size":8,
     #"ytick_count":12,
     }
+def plot_classes(class_array:np.ndarray, class_labels:list, colors:list=None,
+                 fig_path:Path=None, show:bool=False, plot_spec:dict={}):
+    """
+    Plots an integer array mapping pixels to a list of class labels
+
+    :@param class_array: 2d integer array such that integer values are the
+        indeces of the corresponding class label and color.
+    :@param fig_path: Path to generated figure
+    :@param class_labels: string labels indexed by class array values.
+    :@param colors: List of 3-element [0,1] integer arrays for RGB values.
+    """
+    old_ps = plot_spec_default
+    old_ps.update(plot_spec)
+    plot_spec = old_ps
+    if colors is None:
+        colors = [[i/len(class_labels),1,1] for i in range(len(class_labels))]
+        colors = [ mcolo.hsv_to_rgb(c) for c in colors ]
+    assert len(colors)==len(class_labels)
+    cmap, norm = matplotlib.colors.from_levels_and_colors(
+            list(range(len(colors)+1)), colors)
+    im = plt.imshow(class_array, cmap=cmap, norm=norm, interpolation="none")
+    handles = [ Patch(label=class_labels[i], color=colors[i])
+               for i in range(len(class_labels)) ]
+    plt.legend(handles=handles, fontsize=plot_spec.get("fontsize"))
+    plt.tick_params(axis="both", which="both", labelbottom=False,
+                    labelleft=False, bottom=False, left=False)
+    fig = plt.gcf()
+    fig.set_size_inches(*plot_spec.get("fig_size"))
+    plt.title(plot_spec.get("title"))
+    if fig_path:
+        print(f"saving figure as {fig_path.as_posix()}")
+        plt.savefig(fig_path, bbox_inches="tight", dpi=plot_spec.get("dpi"))
+    if show:
+        plt.show()
+
+def stats_1d(data_dict:dict, band_labels:list, fig_path:Path=None,
+             show:bool=False, class_space:float=.2, bar_sigma:float=1,
+             shade_sigma:float=1/3, yscale="linear", plot_spec:dict={}):
+    """
+    Plot the mean and standard deviation of multiple classes on the same
+    X axis. Means and standard deviations for each band in each class must be
+    provided as a dictionary with class labels as keys mapping to a dictionary
+    with "means" and "stdevs" keys mapping to lists each with N members for
+    N bands. Labels for each of the N bands must be provided separately.
+
+    data_dict = {
+        "Class 1":{"means":[9,8,7], "stdevs":[1,2,3]}
+        "Class 2":{"means":[9,8,7], "stdevs":[1,2,3]}
+        "Class 3":{"means":[9,8,7], "stdevs":[1,2,3]}
+        }
+
+    :@param yscale: linear by default, but logit may be good for reflectance.
+    :@param class_space: directs spacing between class data points/error bars
+    :@param bar_sigma: determines the size of error bars in terms of a
+        constant multiple on the class' standard deviation.
+    :@param shade_sigma: the shaded region of the error bar is typically
+        smaller than the bar sigma.
+    """
+    cat_labels = list(data_dict.keys())
+    band_count = len(band_labels)
+    assert band_count > 1
+    for cat in cat_labels:
+        assert len(data_dict[cat]["means"]) == band_count
+        assert len(data_dict[cat]["stdevs"]) == band_count
+    # Merge provided plot_spec with un-provided default values
+    old_ps = plot_spec_default
+    old_ps.update(plot_spec)
+    plot_spec = old_ps
+
+    fig, ax = plt.subplots()
+    transforms = [Affine2D().translate(n, 0.)+ax.transData
+                 for n in np.linspace(-.5*class_space, .5*class_space,
+                                      num=band_count)]
+    ax.set_yscale(yscale)
+    ax.set_ylim(plot_spec.get("yrange"))
+    for i in range(len(cat_labels)):
+        cat = cat_labels[i]
+        ax.errorbar(
+                band_labels,
+                data_dict[cat]["means"],
+                yerr=data_dict[cat]["stdevs"],
+                marker=plot_spec.get("marker"),
+                label=cat_labels[i],
+                linestyle=":",
+                transform=transforms[i],
+                linewidth=plot_spec.get("line_width"),
+                )
+        ax.fill_between(
+                **{"x":band_labels,
+                   "y1":[ m-s*shade_sigma for m,s in zip(
+                       data_dict[cat]["means"], data_dict[cat]["stdevs"]) ],
+                   "y2":[ m+s*shade_sigma for m,s in zip(
+                       data_dict[cat]["means"], data_dict[cat]["stdevs"]) ]},
+                alpha=plot_spec.get("alpha"), transform=transforms[i])
+        ax.grid(visible=plot_spec.get("grid"))
+        ax.set_xlabel(plot_spec.get("xlabel"),
+                      fontsize=plot_spec.get("label_size"))
+        ax.set_ylabel(plot_spec.get("ylabel"),
+                      fontsize=plot_spec.get("label_size"))
+        ax.set_title(plot_spec.get("title"), fontsize=plt.get("title_size"))
+        ax.legend(fontsize=plot_spec.get("legend_font_size"))
+
+    fig.tight_layout()
+    fig.set_size_inches(*plot_spec.get("fig_size"))
+    if show:
+        plt.show()
+    if fig_path:
+        fig.savefig(fig_path.as_posix())
+
 def plot_heatmap(heatmap:np.ndarray, fig_path:Path=None, vmax=None, show=True,
                  plot_spec:dict={}):
     """ """
@@ -89,7 +206,7 @@ def round_to_n(x, n):
     except ValueError:
         return 0
 
-def plot_lines(domain:np.ndarray, ylines:list, image_path:Path=None,
+def plot_lines(domain, ylines:list, image_path:Path=None,
                labels:list=[], plot_spec={}, show:bool=False):
     """
     Plot a list of 1-d lines that share a domain and codomain.
@@ -117,10 +234,13 @@ def plot_lines(domain:np.ndarray, ylines:list, image_path:Path=None,
     #            f"All codomain arrays must be the same size as the domain.")
 
     # Plot each
+    domain = np.asarray(domain)
     fig, ax = plt.subplots()
     for i in range(len(ylines)):
-        ax.plot(domain, ylines[i], label=labels[i] if len(labels) else "",
-                linewidth=plot_spec.get("line_width"))
+        if len(domain.shape)==2 and domain.shape[0]==len(ylines):
+            ax.plot(domain[i], ylines[i],
+                    label=labels[i] if len(labels) else "",
+                    linewidth=plot_spec.get("line_width"))
 
     ax.set_xlabel(plot_spec.get("xlabel"))
     ax.set_ylabel(plot_spec.get("ylabel"))
@@ -289,7 +409,7 @@ def geo_rgb_plot(R:np.ndarray, G:np.ndarray, B:np.ndarray, fig_path:Path,
     print(f"Generated figure at: {fig_path}")
 
 def geo_scalar_plot(data:np.ndarray, lat:np.ndarray, lon:np.ndarray,
-                    fig_path:Path=None, plot_spec:dict={},
+                    fig_path:Path=None, show:bool=True, plot_spec:dict={},
                     animate:bool=False):
     """
     Plot scalar values on a lat/lon grid specified by an xarray Dataset with
@@ -403,7 +523,6 @@ def geo_scalar_plot(data:np.ndarray, lat:np.ndarray, lon:np.ndarray,
     else:
         if fig_path:
             plt.savefig(fig_path.as_posix(), dpi=dpi, bbox_inches='tight')
-        else:
+            print(f"Generated figure at: {fig_path}")
+        if show:
             plt.show()
-    print(f"Generated figure at: {fig_path}")
-

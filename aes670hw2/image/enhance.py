@@ -27,7 +27,6 @@ kernels = {
                    [-1, 0, 1]],
         }
 
-
 def visualize_fourier(X:np.ndarray):
     """ Return the provided array in natural log-scaled phase space """
     return np.log(1+np.abs(fft2(X)))
@@ -65,7 +64,6 @@ def radius_mask(X:np.ndarray, radius:float=None, center:tuple=None,
             frequencies inside the radius are kept. Otherwise applies a
             high-pass filter.
     """
-    print(radius)
     cy, cx = center if center else map(lambda v: int(v/2), X.shape)
     radius = min(cx,cy,X.shape[0]-cy,X.shape[1]+cx) \
             if radius is None else radius
@@ -219,10 +217,13 @@ def linear_gamma_stretch(X:np.ndarray, lower:float=None, upper:float=None,
 
     :@return: An array of float values in range [0, 1] normalized in bounds.
     """
-    lower = lower if not lower is None else np.amin(X)
-    upper = upper if not upper is None else np.amax(X)
+    Xrange = [np.amin(X), np.amax(X)]
+    lower = lower if not lower is None else Xrange[0]
+    upper = upper if not upper is None else Xrange[1]
+    Xnew = ((X-lower)/(upper-lower))**(1/gamma)
     if not report_min_and_range:
-        return ((X-lower)/(upper-lower))**(1/gamma)
+        return Xnew
+    return (Xnew, np.amin(X), np.amax(X)-np.amin(X))
 
 def gamma(X:np.ndarray, gamma, a=1.):
     """
@@ -324,19 +325,22 @@ def get_pixel_counts(X:np.ndarray, nbins, debug=False):
     """
     #X = X.compressed() if isinstance(X, np.ma.MaskedArray) else X.flatten()
     # Get all unmasked values
-    X = X.compressed() if isinstance(X, np.ma.MaskedArray) else X
-    Xmin = np.amin(X)
-    Xmax = np.amax(X)
+    if isinstance(X, np.ma.MaskedArray):
+        if debug: print(f"Handling masked array")
+        Xdata = X.compressed()
+    else:
+        Xdata = X.ravel()
+    Xmin = np.amin(Xdata)
+    Xmax = np.amax(Xdata)
     bin_size = (Xmax-Xmin)/nbins
     if debug:
         print(f"Binning {X.size} unmasked data points")
         print(f"Original array range: ({Xmin}, {Xmax})")
     counts = np.zeros(nbins)
-    X = norm_to_uint(X, nbins)
-    for px in X:
+    Xnorm = norm_to_uint(Xdata, nbins)
+    for px in Xnorm:
         counts[px] += 1
     return counts, bin_size, Xmin
-
 
 def get_cumulative_hist(X:np.ndarray, nbins:int, debug=False):
     """
@@ -357,6 +361,37 @@ def get_cumulative_hist(X:np.ndarray, nbins:int, debug=False):
         total += counts[i]
         counts[i] = total
     return counts, bin_size, Xmin
+
+def histogram_match(X:np.ndarray, Y:np.ndarray, nbins:int):
+    """
+    Do histogram matching between (M,N) or (M,N,3) arrays X and Y with nbins
+    brightness levels, and return the resulting array.
+
+    If X is a masked array, only histogram-matches unmasked values, setting
+    masked values to the minimum of the array.
+    """
+    is_rgb = lambda A:len(A.shape)==3 and A.shape[2]==3
+    if is_rgb(X) and is_rgb(Y):
+        return np.dstack([
+            histogram_match(np.copy(X)[:,:,i],np.copy(Y)[:,:,i], nbins)
+            for i in range(3)])
+    yc_hist, dy, ymin = get_cumulative_hist(Y, nbins)
+    xc_hist, _, _ = get_cumulative_hist(X, nbins)
+    if type(X) == np.ma.MaskedArray:
+        mask = X.mask
+        normX = X.data
+        normX[np.where(mask)] = np.amin(normX)
+        normX = norm_to_uint(normX, nbins)
+    else:
+        normX = norm_to_uint(X, nbins)
+    matched = np.zeros_like(normX)
+    yc_hist = (yc_hist * (nbins-1)/np.amax(yc_hist)).astype(int)
+    xc_hist = (xc_hist * (nbins-1)/np.amax(xc_hist)).astype(int)
+    for i in range(matched.shape[0]):
+        for j in range(matched.shape[1]):
+            matched[i,j] = np.argmin(np.abs(xc_hist[normX[i,j]]-yc_hist))
+    return matched
+
 
 def histogram_equalize(X:np.ndarray, nbins:int,
                        cumulative_histogram:np.array=None, debug=False):
@@ -391,10 +426,15 @@ def histogram_equalize(X:np.ndarray, nbins:int,
         Xmin = None
 
     hist_constant = (nbins-1)/X.size
-    hist_scale = hist_constant*c_hist
-    if debug: print(f"Equalizing histogram with scale {hist_constant}")
     normed = norm_to_uint(X, nbins)
-    Y = np.vectorize(lambda px: c_hist[px])(normed)
+    hist_bins = norm_to_uint(hist_constant*c_hist, nbins)
+    Y = np.zeros_like(normed)
+    for i in range(normed.shape[0]):
+        for j in range(normed.shape[1]):
+            Y[i,j] = hist_bins[normed[i,j]]
+
+    #Y = [[  for j in X.shape[1]] for i in X.shape[0]]
+    #Y = np.vectorize(lambda px: hist_scale*c_hist[px])(normed)
     #Y = np.vectorize(lambda px: hist_scale[px])(normed)
     return Y, bin_size, Xmin
 

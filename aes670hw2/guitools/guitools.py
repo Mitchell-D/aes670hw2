@@ -10,6 +10,37 @@ from pprint import pprint as ppt
 
 from aes670hw2 import enhance
 
+def unique_colors(num:int, saturation:int=1, value:int=1):
+    """
+    Returns (num) unique RGB colors on an integer [0,1] scale using HSV
+    mapping with the provided saturation and value.
+    """
+    hsv = np.array([[ [x/num,saturation,value] for x in range(num) ]])
+    rgb_8bit = cv.cvtColor(enhance.norm_to_uint(hsv,256,np.uint8),
+                           cv.COLOR_HSV2RGB)
+    return [ rgb_8bit[0,i]/255 for i in range(rgb_8bit.shape[1]) ]
+
+def scal_to_rgb(X:np.ndarray, hue_range:tuple=(0,.66), sat_range:tuple=(1,1),
+                val_range:tuple=(1,1)):
+    """
+    Convert a 2d array of data values to a [0,1]-normalized RGB using an hsv
+    reference system. For a basic color scale, just change the hue parameter.
+
+    Data values must be binned to 256 in order to convert,
+    so data integrity is compromised by this method.
+    """
+    assert len(X.shape)==2
+    for r in (hue_range, sat_range, val_range):
+        i,f = r
+        if not 0<=i<=1 and 0<=f<=1:
+            raise ValueError(f"All bounds must be between 0 and 1 ({i},{f})")
+    X  = enhance.linear_gamma_stretch(X)
+    to_interval = lambda X, interval: X*(interval[1]-interval[0])+interval[0]
+    hsv = np.dstack([to_interval(X,intv) for intv in
+                     (hue_range, sat_range, val_range)])
+    hsv_8bit = cv.cvtColor(enhance.norm_to_uint(hsv,256,np.uint8),
+                           cv.COLOR_HSV2RGB)
+    return np.asarray(enhance.linear_gamma_stretch(hsv_8bit))
 
 def png_to_np(image_file:Path, debug=False):
     """
@@ -324,6 +355,8 @@ def rect_on_rgb(X:np.ndarray, yrange:tuple, xrange:tuple,
     # Must flip coordinates for cv
     Xrect = cv.rectangle(X, TL[::-1], BR[::-1], color, thickness)
     return np.ma.array(Xrect, mask) if not mask is None else Xrect
+
+
 
 if __name__ == "__main__":
     debug = True
