@@ -1,5 +1,6 @@
 
 import numpy as np
+from scipy import stats
 from . import enhance
 
 def minimum_distance(X:np.ndarray, categories:dict):
@@ -29,32 +30,49 @@ def minimum_distance(X:np.ndarray, categories:dict):
             classified[i,j] = disc.index(min(disc))
     return classified, labels
 
-def mlc(X:np.ndarray, categories:dict):
+def mlc(X:np.ndarray, categories:dict, thresh:float=None):
     """
     Do maximum likelihood classification using the discriminant function
 
     :@param X: (M,N,b) ndarray with b independent variables
     :@param X: Dictionary mapping category labels to a set of 2-tuple pixel
             indeces of pixels in X belonging to that class.
+    :@param thresh: Pixel confidence threshold in percent [0,1]j Pixels
+            classified with less confidence than the threshold will be
+            added to a new "uncertain" category.
     :@return: 2-tuple like (classified, keys) containing the integer-
             -classified array, and a list of keys with indeces corresponding
             to the values in the array labeled by that category.
     """
     cat_keys = list(categories.keys())
-    cats = [X[tuple(map(np.asarray, zip(*categories[cat])))]
+    # Chi threshold depends on degrees of freedom and significance threshold
+    chi_thresh = None if not thresh else stats.chi2.ppf(thresh, df=X.shape[2])
+    cats = [X[tuple(map(np.asarray, tuple(zip(*categories[cat]))))]
             for cat in cat_keys]
     means = [ np.mean(c, axis=0) for c in cats ]
     covs = [ np.cov(c.transpose()) for c in cats ]
-    ln_covs = [ -1*np.log(np.linalg.det(C)) for C in covs ]
+    nln_covs = [ -1*np.log(np.linalg.det(C)) for C in covs ]
     inv_covs = [ np.linalg.inv(C) for C in covs ]
+    if thresh:
+        cat_keys.append("uncertain")
     def mlc_disc(px):
         G = np.zeros_like(np.arange(len(means)))
+        chi = np.zeros_like(np.arange(len(means)))
         for i in range(len(means)):
             obs_cov = np.dot(inv_covs[i], px-means[i])
+            # If pixel brightnesses are normally distributed, obs_cov
+            # should have a chi-squared distribution.
             obs_cov = np.dot((px-means[i]).transpose(), obs_cov)
             #obs_cov = np.dot((px-means[i]).transpose(), inv_covs[i])
-            G[i] = ln_covs[i]-obs_cov
-        return np.argmax(G)
+            G[i] = nln_covs[i]-obs_cov
+            chi[i] = nln_covs[i]-obs_cov
+        idx = np.argmax(G)
+        if not thresh:
+            return idx
+        if G[idx] <= -.5*chi_thresh+.5*nln_covs[idx]:
+            return len(means)
+        return idx
+
     classified = np.zeros_like(X[:,:,0])
     for i in range(X.shape[0]):
         for j in range(X.shape[1]):

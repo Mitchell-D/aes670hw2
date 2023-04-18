@@ -157,6 +157,30 @@ class MOD021KM:
         """
         return MOD021KM(*modis.get_modis_data(l1b_hdf, bands=l1b_bands))
 
+    @staticmethod
+    def mask_to_idx(mask:np.ndarray, samples:int=None):
+        """
+        Converts a 2d boolean mask to a a list of (i,j) indeces of True values.
+        """
+        mpx = tuple(zip(*np.where(mask)))
+        spx = []
+        return [ mpx[j] for j in np.random.choice(len(mpx), size=samples) ]
+
+    @staticmethod
+    def ints_to_masks(intarr:np.ndarray):
+        """
+        Converts an array of [0,M) integers representing M classes to a list
+        of boolean truth arrays for the corresponding classes, each boolean
+        array having the same shape as the input array.
+        """
+        intarr = intarr.astype(int)
+        masks = [np.full_like(intarr, False, dtype=bool)
+                 for i in range(np.amax(intarr)+1)]
+        for j in range(intarr.shape[0]):
+            for i in range(intarr.shape[1]):
+                masks[intarr[j,i]][j,i] = True
+        return masks
+
     def __init__(self, data:tuple, info:dict,
                  geo:tuple=None, sunsat:tuple=None):
         """
@@ -999,13 +1023,15 @@ class MOD021KM:
         gp.geo_scalar_plot(self.data(label), self._geo[0], self._geo[1],
                            show=show,fig_path=fig_path, plot_spec=plot_spec)
 
-    def get_kmeans(self, labels:list=None, class_count:int=4, tolerance=1e-3,
-                   return_as_ints:bool=False, debug=False):
+    def get_kmeans(self, labels_or_arrays:list=None, class_count:int=4,
+                   tolerance=1e-3, return_as_ints:bool=False, debug=False):
         """
         Perform K-means classification on the requested scalar arrays and
         return a list of masks with length class_count.
 
-        :@param labels: list of loaded scalar recipes or band numbers
+        :@param labels_or_arrays: list of loaded scalar recipes or band
+            numbers, or 2d ndarrays with the same shape as this subgrid. By
+            default all loaded bands are used.
         :@param class_count: Number of K-means classes to acquire
         :@param tolerance: Floating-point tolerance for mean vector equality
             in [0,1]-normalized data coordinates.
@@ -1051,3 +1077,40 @@ class MOD021KM:
         for i in range(len(masks)):
             arr[np.where(masks[i])] = i
         return arr
+
+    def get_mlc(self, sample_dict:dict, labels_or_arrays:list=None,
+                thresh=None):
+        """
+        Perform MLC classification using the scalar arrays corresponding to
+        the provided list of labels, using the class samples defined in
+        the required sample_dict.
+
+        :@param sample_dict:Dictionary mapping class names to a list of (i,j)
+            array coordinates of pixel samples for that class indexing the
+            first (y) and second (x) dimensions, respectively. Boolean masks
+            can be converted to pixels indeces with MOD021KM.mask_to_idx
+        :@param labels_or_arrays: list of loaded scalar recipes or band
+            numbers, or 2d ndarrays with the same shape as this subgrid. By
+            default all loaded bands are used.
+        :@param thresh: [0,1] confidence percentile for inclusion in a class.
+            Values outside the threshod are labeled with new "uncertain" class.
+        """
+        if labels_or_arrays is None:
+            labels_or_arrays = self.bands
+        labels_or_arrays = list(labels_or_arrays)
+        arrays = [None for i in range(len(labels_or_arrays))]
+        for i in range(len(labels_or_arrays)):
+            if type(labels_or_arrays[i]) not in [int,str]:
+                try:
+                    arrays[i] = np.asarray(labels_or_arrays[i])
+                    assert arrays[i].shape == self._shape
+                except:
+                    raise ValueError(
+                            f"Labels that aren't a recipe or band number" + \
+                             " must be a array with this subgrid's shape")
+            else:
+                arrays[i] = self.data(labels_or_arrays[i])
+
+        norm = lambda X: 10*enh.linear_gamma_stretch(X)
+        classified, keys = classify.mlc(np.dstack(arrays), sample_dict, thresh)
+        return classified, keys

@@ -238,11 +238,15 @@ def plot_lines(domain, ylines:list, image_path:Path=None,
     # Plot each
     domain = np.asarray(domain)
     fig, ax = plt.subplots()
+    colors = plot_spec.get("colors")
+    if colors:
+        assert len(ylines)==len(colors)
     for i in range(len(ylines)):
         if len(domain.shape)==2 and domain.shape[0]==len(ylines):
             ax.plot(domain[i], ylines[i],
                     label=labels[i] if len(labels) else "",
-                    linewidth=plot_spec.get("line_width"))
+                    linewidth=plot_spec.get("line_width"),
+                    color=colors[i])
 
     ax.set_xlabel(plot_spec.get("xlabel"))
     ax.set_ylabel(plot_spec.get("ylabel"))
