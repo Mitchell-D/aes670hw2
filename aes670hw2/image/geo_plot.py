@@ -73,13 +73,15 @@ def plot_classes(class_array:np.ndarray, class_labels:list, colors:list=None,
         indeces of the corresponding class label and color.
     :@param fig_path: Path to generated figure
     :@param class_labels: string labels indexed by class array values.
-    :@param colors: List of 3-element [0,1] integer arrays for RGB values.
+    :@param colors: List of 3-element [0,1] float arrays for RGB values.
     """
     old_ps = plot_spec_default
     old_ps.update(plot_spec)
     plot_spec = old_ps
     if colors is None:
-        colors = [[i/len(class_labels),1,1] for i in range(len(class_labels))]
+        colors = [[i/len(class_labels),
+                   .5+(len(class_labels)-i)/(2*len(class_labels)),
+                   .5+i/(2*len(class_labels))] for i in range(len(class_labels))]
         colors = [ mcolo.hsv_to_rgb(c) for c in colors ]
     assert len(colors)==len(class_labels)
     cmap, norm = matplotlib.colors.from_levels_and_colors(

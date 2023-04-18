@@ -169,15 +169,21 @@ class MOD021KM:
         # Equal-size MODIS data arrays; immutable
         self._shape = tuple(data[0].shape)
         self._data = tuple([ self._valid_array(X) for X in data ])
-        # Dictionary of data generated with a recipe. Since the underlying
-        # data can't change you should never have to re-generate one of
-        # the recipe arrays. If you need to enhance, make a new recipe/label.
-        self._recipe_data = {}
 
         # Assure all arguments are the valid types and have a nonzero length.
         self._info = tuple(info)
         self._geo = tuple(geo) if geo else None
         self._sunsat = tuple(sunsat) if sunsat else None
+
+        # Dictionary of data generated with a recipe. Since the underlying
+        # data can't change you should never have to re-generate one of
+        # the recipe arrays. If you need to enhance, make a new recipe/label.
+        self._recipe_data = {
+                "sza":self._sunsat[0],
+                "saa":self._sunsat[1],
+                "vaa":self._sunsat[2],
+                "vza":self._sunsat[3],
+                }
 
         # available MODIS band numbers; immutable
         self._bands = tuple([info[i]["band"] for i in range(len(self._data))])
@@ -241,7 +247,7 @@ class MOD021KM:
                     desc=("cirrus","red","phase"),
                     ),
                 "FIRE":Recipe(
-                    args=(1, 21, 31),
+                    args=(1, 20, 31),
                     func=lambda r,g,b: np.dstack(list(map(
                         enh.linear_gamma_stretch,
                         [ g-b, b, 1-enh.linear_gamma_stretch(r) ]))),
@@ -271,10 +277,6 @@ class MOD021KM:
     def rgb_recipes(self):
         """ Returns a copy of the dictionary of loaded RGB Recipe objects """
         return self._rgb_recipes
-    @property
-    def scalar_recipes(self):
-        """ Returns a copy of the dictionary of loaded RGB Recipe objects """
-        return self.scalar_recipes
 
     @property
     def recipes(self):
@@ -293,7 +295,37 @@ class MOD021KM:
         labels for recipes and band number labels, which should be
         interchangable as recipe function arguments.
         """
-        return list(self._scalar_recipes.keys())+list(self._bands)
+        return list(set(list(self._scalar_recipes.keys()) + \
+                list(self._bands) + list(self._recipe_data.keys())))
+
+    def radiance(self, band:int):
+        """
+        Returns the band array converted to radiance instead of brightness
+        temperature or reflectance.
+        This is a lossy process for brightness temperature since it requires
+        un-inverting the planck function of radiance calculated after download.
+        """
+        if self.info(label)["is_reflective"]:
+            counts = self.data(label)*np.cos(np.deg2rad(self._sunsat[0])) \
+                    / self.info(label)["ref_scale"] + self.info("ref_offset")
+            rad = (counts-self.info(label)["rad_offset"]) \
+                    * self.info["rad_scale"]
+        else:
+            T = self.data(label)
+            wl = self.info(label)["ctr_wl"]
+            c1 = 1.191042e8 # W / (m^2 sr um^-4)
+            c2 = 1.4387752e4 # K um
+            rad = c1/(wl**5 * (np.exp(c2/(wl*T)-1)))
+        return rad
+
+    def raw_reflectance(self, band:int):
+        """
+        returns the raw reflectance array of the provided reflectance band,
+        ie the observed reflectance not scaled by the solar zenith angle.
+        """
+        if not self.info(band)["is_reflective"]:
+            raise ValueError(f"Band {band} isn't a reflectance band!")
+        return np.cos(np.deg2rad(self.data("sza")))*self.data(band)
 
     def data(self, label, _rdepth:int=0):
         """
@@ -629,7 +661,7 @@ class MOD021KM:
         :@param fig_path: if not None, saves histogram plot as a png
         :@param plot_spec: geo_plot.plot_lines plot_spec specification
         """
-        single_label = type(labels)==str
+        single_label = type(labels) in (str, int)
         labels = [labels] if single_label else labels
         hists = []
         for l in labels:
@@ -985,10 +1017,23 @@ class MOD021KM:
         """
         if labels is None:
             labels = self.bands
+        labels = list(labels)
+        arrays = [None for i in range(len(labels))]
+        for i in range(len(labels)):
+            if type(labels[i]) not in [int,str]:
+                try:
+                    arrays[i] = np.asarray(labels[i])
+                    assert arrays[i].shape == self._shape
+                except:
+                    raise ValueError(
+                            f"Labels that aren't a recipe or band number" + \
+                             " must be a array with this subgrid's shape")
+            else:
+                arrays[i] = self.data(labels[i])
+
         norm = lambda X: 10*enh.linear_gamma_stretch(X)
-        print(labels)
         km = classify.k_means(
-                X=np.dstack([norm(self.data(l)) for l in labels]),
+                X=np.dstack([norm(arrays[i]) for i in range(len(arrays))]),
                 cluster_count=class_count,
                 tolerance=tolerance,
                 get_sse=False,
@@ -996,7 +1041,7 @@ class MOD021KM:
                 )
         masks = []
         for c in range(len(km)):
-            tmp_mask = np.full_like(self.data(labels[0]), False, dtype=bool)
+            tmp_mask = np.full_like(arrays[0], False, dtype=bool)
             for i,j in km[c]:
                 tmp_mask[i,j] = True
             masks.append(tmp_mask)

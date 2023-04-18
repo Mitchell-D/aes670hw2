@@ -1,6 +1,6 @@
 **/__pycache__/
-data/
-figures/
+./data/
+./figures/
 laads_token
 references/
 aes670hw2.egg-info/
