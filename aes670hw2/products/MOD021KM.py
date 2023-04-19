@@ -167,6 +167,21 @@ class MOD021KM:
         return [ mpx[j] for j in np.random.choice(len(mpx), size=samples) ]
 
     @staticmethod
+    def idx_to_mask(samples:list, shape:tuple):
+        """
+        Converts a list of (j,i) integer pixel indeces to a 2d boolean mask
+        array with the provided shape
+        """
+        mask = np.full(shape, False, dtype=bool)
+        mask[tuple(map(np.asarray,zip(*samples)))] = True
+        return mask
+        '''
+        for j,i in samples:
+            mask[j,i] = True
+        return mask
+        '''
+
+    @staticmethod
     def ints_to_masks(intarr:np.ndarray):
         """
         Converts an array of [0,M) integers representing M classes to a list
@@ -306,6 +321,11 @@ class MOD021KM:
     def recipes(self):
         """ Returns a copy of the dictionary of loaded 2d Recipe objects """
         return self._scalar_recipes
+
+    @property
+    def shape(self):
+        """ returns the list of data band numbers """
+        return self._shape
 
     @property
     def bands(self):
@@ -1095,6 +1115,7 @@ class MOD021KM:
         :@param thresh: [0,1] confidence percentile for inclusion in a class.
             Values outside the threshod are labeled with new "uncertain" class.
         """
+        #print(sample_dict.keys())
         if labels_or_arrays is None:
             labels_or_arrays = self.bands
         labels_or_arrays = list(labels_or_arrays)
