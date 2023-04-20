@@ -213,9 +213,7 @@ def get_modis_data(datafile:Path, bands:tuple,
             2-tuple (latitude, longitude) of the 1km data grid.
     """
     #validate_l2_bands(bands)
-    print(datafile.exists())
     mod_sd = SD(datafile.as_posix(), SDC.READ)
-    print(mod_sd)
     data = []
     info = []
     # Awful way of determining if this is a l2 file, but this method is bound

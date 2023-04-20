@@ -37,7 +37,7 @@ def mlc(X:np.ndarray, categories:dict, thresh:float=None):
     :@param X: (M,N,b) ndarray with b independent variables
     :@param X: Dictionary mapping category labels to a set of 2-tuple pixel
             indeces of pixels in X belonging to that class.
-    :@param thresh: Pixel confidence threshold in percent [0,1]j Pixels
+    :@param thresh: Pixel confidence threshold in percent [0,1] Pixels
             classified with less confidence than the threshold will be
             added to a new "uncertain" category.
     :@return: 2-tuple like (classified, keys) containing the integer-

@@ -220,8 +220,8 @@ class MOD021KM:
         self._recipe_data = {
                 "sza":self._sunsat[0],
                 "saa":self._sunsat[1],
-                "vaa":self._sunsat[2],
-                "vza":self._sunsat[3],
+                "vza":self._sunsat[2],
+                "vaa":self._sunsat[3],
                 }
 
         # available MODIS band numbers; immutable
@@ -370,6 +370,24 @@ class MOD021KM:
         if not self.info(band)["is_reflective"]:
             raise ValueError(f"Band {band} isn't a reflectance band!")
         return np.cos(np.deg2rad(self.data("sza")))*self.data(band)
+
+    def area(self, mask=None, nadir_merid:float=1, nadir_zonal:float=1):
+        """
+        Returns the total area of this subgrid's domain based on viewing zenith
+        angle and nadir pixel dimensions. If a 2d boolean mask is provided,
+        returns only the sum of the areas of the True pixels.
+
+        :@param mask: 2d boolean array with the same shape as this subgrid.
+            True values correspond to pixels counted in the returned area.
+        :@param nadir_merid: Meridional (y) width of the nadir pixel.
+        :@param nadir_merid: Zonal (x) width of the nadir pixel.
+        """
+        if mask is None:
+            mask = np.full(self.shape, True, dtype=bool)
+        assert mask.shape == self._shape
+        distortion = (np.cos(np.deg2rad(
+            self.data("vza")[np.where(mask)])))**(-3)
+        return np.sum(nadir_merid*nadir_zonal*distortion)
 
     def data(self, label, _rdepth:int=0):
         """

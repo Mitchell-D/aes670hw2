@@ -138,7 +138,7 @@ def stats_1d(data_dict:dict, band_labels:list, fig_path:Path=None,
     fig, ax = plt.subplots()
     transforms = [Affine2D().translate(n, 0.)+ax.transData
                  for n in np.linspace(-.5*class_space, .5*class_space,
-                                      num=band_count)]
+                                      num=len(cat_labels))]
     ax.set_yscale(yscale)
     ax.set_ylim(plot_spec.get("yrange"))
     for i in range(len(cat_labels)):
