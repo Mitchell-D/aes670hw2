@@ -448,8 +448,8 @@ def linear_contrast(X:np.ndarray, a:float=1, b:float=0, debug=False):
     xmax = np.amax(X)
     return np.clip(X*a+b, xmin, xmax)
 
-def saturated_linear_contrast(X:np.ndarray, nbins:int, lower_sat_pct:float=0,
-                              upper_sat_pct:float=1):
+def saturated_linear_contrast(X:np.ndarray, nbins:int=None,
+                              lower_sat_pct:float=0, upper_sat_pct:float=1):
     """
     Perform saturated contrast stretching on an image, mapping the full range
     of brightness values to the
@@ -460,7 +460,7 @@ def saturated_linear_contrast(X:np.ndarray, nbins:int, lower_sat_pct:float=0,
     X = linear_gamma_stretch(X)
     X[np.where(X <= lower_sat_pct)] = lower_sat_pct
     X[np.where(X >= upper_sat_pct)] = upper_sat_pct
-    return norm_to_uint(X, nbins)
+    return norm_to_uint(X, nbins) if nbins else X
 
 def do_histogram_analysis(X:np.ndarray, nbins:int, equalize:bool=False,
                           debug=False):

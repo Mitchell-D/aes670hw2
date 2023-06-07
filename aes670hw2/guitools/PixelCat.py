@@ -44,6 +44,35 @@ class PixelCat:
         assert band in self._bands
         return self._arrays[self._bands.index(band)]
 
+    def pick_staurated_contrast(self, band:str, offset:float=0,
+                             set_band:bool=False, debug=False):
+        """ """
+        assert band in self._bands
+        slope_scale = 50
+        contrast = m.e**((gt.trackbar_select(
+                X=self.band(band),
+                func=lambda X, v: enhance.linear_contrast(
+                        X, m.e**((v-100)/slope_scale), offset),
+                label=f"Band {band} contrast slope: ",
+                debug=debug
+                )-100)/slope_scale)
+        if set_band:
+            print("Setting band")
+            band_idx = self._bands.index(band)
+            self._arrays[band_idx] = enhance.linear_contrast(
+                    self.band(band), contrast, offset)
+        return contrast
+
+    def pick_band_scale(self, band:str, set_band:bool=False):
+        assert band in self._bands
+        choice = gt.trackbar_select(
+                X=self.band(band),
+                func=lambda X, v: X*v/255
+                )/255
+        if set_band:
+            self.set_band(self.band(band)*choice, band, replace=True)
+        return choice
+
     def pick_linear_contrast(self, band:str, offset:float=0,
                              set_band:bool=False, debug=False):
         """ """

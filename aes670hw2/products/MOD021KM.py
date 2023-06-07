@@ -157,6 +157,40 @@ class MOD021KM:
         """
         return MOD021KM(*modis.get_modis_data(l1b_hdf, bands=l1b_bands))
 
+    def mask_to_color(array:np.ndarray, mask:np.ndarray, color:tuple=(1,0,0),
+                      radius:int=0):
+        """
+        Applies an RGB color to a (M,N,3) RGB or (M,N) scalar array where
+        the provided mask is True. If the provided array is (M,N)-shaped,
+        the returned array will be an (M,N,3) RGB.
+
+        :@param array: (M,N) scalar or (M,N,3) RGB array. Values are normalized
+            from minimum to maximum in the returned RGB.
+        :@param mask: (M,N) shaped boolean mask, True where pixels should be
+            marked with the provided color.
+        :@param color: 3-tuple of [0,1] RGB float values for the color to
+            mark True-masked pixels with. Defaults to RED.
+
+        :@return: (M,N,3) shaped RGB array of [0,1] float values with masked
+            pixels marked using the provided color.
+        """
+        assert len(mask.shape) == 2
+        assert tuple(mask.shape[:2]) == tuple(array.shape[:2])
+        assert len(color) == 3
+        assert all([0<=v<=1 for v in color])
+        assert radius >= 0
+        if len(array.shape) == 2:
+            array = np.dstack([array for i in range(3)])
+        array = enh.linear_gamma_stretch(array)
+        if not radius:
+            array[np.where(mask)] = np.asarray(color)
+            return array
+        for ji in zip(*np.where(mask)):
+            array = enh.linear_gamma_stretch(gt.label_at_index(
+                (array*255).astype(np.uint8),ji,size=radius,
+                color=[255*c for c in color]))
+        return array
+
     @staticmethod
     def mask_to_idx(mask:np.ndarray, samples:int=None):
         """
@@ -222,7 +256,11 @@ class MOD021KM:
                 "saa":self._sunsat[1],
                 "vza":self._sunsat[2],
                 "vaa":self._sunsat[3],
+                "lat":self._geo[0],
+                "lon":self._geo[1],
+                "height":self._geo[2],
                 }
+        self._rgb_recipe_data = {}
 
         # available MODIS band numbers; immutable
         self._bands = tuple([info[i]["band"] for i in range(len(self._data))])
@@ -230,7 +268,7 @@ class MOD021KM:
         # RGB recipes are assumed to return a (M,N) array
         self._scalar_recipes = {
                 "ndvi":Recipe(
-                    args=(1,16),
+                    args=(1,2),
                     func=lambda A,B:(B-A)/(B+A),
                     name="Normalized Difference Vegetation Index",
                     ),
@@ -340,7 +378,8 @@ class MOD021KM:
         interchangable as recipe function arguments.
         """
         return list(set(list(self._scalar_recipes.keys()) + \
-                list(self._bands) + list(self._recipe_data.keys())))
+                list(self._bands) + list(self._recipe_data.keys()) + \
+                list(self._rgb_recipe_data.keys())))
 
     def radiance(self, band:int):
         """
@@ -389,7 +428,8 @@ class MOD021KM:
             self.data("vza")[np.where(mask)])))**(-3)
         return np.sum(nadir_merid*nadir_zonal*distortion)
 
-    def data(self, label, _rdepth:int=0):
+    def data(self, label, choose_contrast:bool=False,
+             choose_gamma:bool=False, _rdepth:int=0):
         """
         Functionally evaluates and returns a copy of the array associated with
         the requested data band or scalar recipe referenced by the band integer
@@ -404,7 +444,16 @@ class MOD021KM:
         to 5, so if a function has too many embedded calls to another recipe
         in it's call tree, it may fail.
 
+        NOTE: if choose_gamma or choose_contrast are True, the returned data
+        will be normalized from [min,max] to [0,1].
+
         :@param label: integer of loaded band or string label of loaded Recipe.
+        :@param choose_contrast: If True, prompts the user to choose a scalar
+                contrast value using an interactive window and returns the
+                array resulting from the value they choose.
+        :@param choose_gamma: If True, prompts the user to choose a scalar
+                gamma exponent value using an interactive window and returns
+                the array resulting from the value they choose.
         :@param _rdepth: Recipes are allowed to nest, so there is danger of
                 accidentally creating a recursive loop. Here we keep a
                 count of the recursive depth of a call and keep it under 5.
@@ -422,9 +471,41 @@ class MOD021KM:
                         "while getting data: {label}")
 
         if type(label) is str:
-            return np.copy(self._recipe_data[label])
+            data = self._recipe_data[label]
         else:
-            return np.copy(self._data[self._b2idx(label)])
+            data = self._data[self._b2idx(label)]
+        if not choose_contrast or not choose_gamma:
+            return data
+        data = enh.linear_gamma_stretch(data)
+        pc = PixelCat([data], [label])
+        if choose_contrast is True:
+            print(TFmt.WHITE(f"Choose saturating contrast for {label}",
+                  bold=True))
+            pc.pick_linear_contrast(label, set_band=True)
+        if choose_gamma is True:
+            print(TFmt.WHITE(f"Choose gamma for {label}",bold=True))
+            pc.pick_gamma(label, set_band=True)
+        print("returning Pixel Cat")
+        return pc.band(label)
+
+    def add_data(self, label:str, data:np.ndarray):
+        """
+        Add a labeled scalar array to the data stored by this subgrid
+        so that it can be referenced with its label string
+        """
+        assert data.shape == self.shape
+        assert label not in self.labels
+        self._recipe_data[label] = data
+
+    def add_rgb_data(self, label:str, data:np.ndarray):
+        """
+        Add a labeled scalar array to the data stored by this subgrid
+        so that it can be referenced with its label string
+        """
+        assert data.shape == (*self.shape,3)
+        assert label not in self.labels
+        self._rgb_recipe_data[label] = data
+
 
     def values(self, band, mask:np.ndarray=None):
         """
@@ -479,23 +560,35 @@ class MOD021KM:
         return band_or_label
 
     def get_rgb(self, label, as_pixelcat:bool=False, choose_gamma:bool=False,
-                gamma_scale:float=1.):
+                choose_contrast:bool=False, gamma_scale:float=1.):
         """
         Evaluates a loaded RGB recipe referenced by label and returns a (M,N,3)
         array copy of the RGB.
 
         :@param label: valid string label for the loaded RGB recipe to generate
         """
-        self._validate_rgb_label(label)
-        f = self._rgb_recipes[label].func
-        args = self._rgb_recipes[label].args
-        rgb = f(*[self.data(a) for a in args])
+        if label in self._rgb_recipe_data.keys():
+            rgb =  np.copy(self._rgb_recipe_data[label])
+            if label in self._rgb_recipes.keys():
+                args = self._rgb_recipes[label].args
+            else:
+                args = ["RED", "GREEN", "BLUE"]
+
+        else:
+            self._validate_rgb_label(label)
+            f = self._rgb_recipes[label].func
+            args = self._rgb_recipes[label].args
+            rgb = f(*[self.data(a) for a in args])
         if not as_pixelcat and not choose_gamma:
             return rgb
-        rgb_pc = PixelCat([rgb[:,:,i] for i in range(rgb.shape[2])],
-                        self._rgb_recipes[label].args)
+        rgb_pc = PixelCat([rgb[:,:,i] for i in range(rgb.shape[2])], args)
+        if choose_contrast:
+            for l in args:
+                print(TFmt.WHITE(f"Choose saturating contrast for {label}"))
+                rgb_pc.pick_linear_contrast(l, set_band=True)
         if choose_gamma:
             for l in args:
+                print(TFmt.WHITE(f"Choose gamma for {label}"))
                 rgb_pc.pick_gamma(l, gamma_scale=gamma_scale, set_band=True)
         if as_pixelcat:
             return rgb_pc
@@ -601,6 +694,7 @@ class MOD021KM:
             "val_range":(1,1),   # Value range, 1 by default
             }
         """
+        assert type(label) in (str, int)
         # If this is a grayscale array...
         if label in self.labels:
             array = self.data(label)
@@ -609,7 +703,7 @@ class MOD021KM:
                 gt.quick_render(gt.scal_to_rgb(array, **hsv_ranges))
             else:
                 # Otherwise just render it as a grayscale.
-                gt.quick_render(enh.linear_gamma_stretch(array))
+                gt.quick_render(array)
             return
         # If this is an RGB...
         self._validate_rgb_label(label)
@@ -671,23 +765,25 @@ class MOD021KM:
                 X = self.data(label_or_array)
         return X
 
-    def histogram_match(self, from_label_or_array, to_label_or_array, nbins=256,
-                        equalize:bool=False, show:bool=False,
+    def histogram_match(self, from_label_or_array, to_label_or_array,
+                        nbins=256, equalize:bool=False, show:bool=False,
                         fig_path:Path=None):
         """
         Histogram matchs the 2d array referenced by from_label_or_array to the
         2d array referenced by to_label_or_array, and returns the
         histogram-matched 2d array without updating internal data or labels.
 
-        :@param from_label_or_array: int (band), str (label of a scalar or RGB
-            Recipe) or
+        Consider generating a normal distribution of greyscale values with
+        guitools.get_normal_array and providing a mean/stdev of your choice.
 
+        :@param from_label_or_array: int (band), str (label of a scalar or RGB
+            Recipe) or label of a valid 2d array loaded into this object. This
+            array's brightness distribution is remapped to the
+            to_label_or_array array.
+        :@param to_label_or_array: int (band) or str (2d array from recipe)
             label of a valid 2d array loaded into this object. This array's
-            brightness distribution is remapped to the to_label_or_array array.
-        :@param to_label_or_array: int (band) or str (2d array from recipe) label of a
-            valid 2d array loaded into this object. This array's cumulative
-            brightness distribution histogram is used as a reference to adapt
-            the distribution of the  from_label_or_array array.
+            cumulative brightness distribution histogram is used as a reference
+            to adapt the distribution of the  from_label_or_array array.
         :@param nbins: Number of brightness bins to use for matching
         :@param nbins: If True, histogram-equalizes the proveded label's array
             and returns it in the analysis dictionary.
@@ -708,6 +804,43 @@ class MOD021KM:
             gp.generate_raw_image(enh.linear_gamma_stretch(matched), fig_path)
         return matched
 
+    def rgb_histogram_analysis(self, rgb_label, nbins:int=256,
+                               equalize:bool=False, show:bool=False,
+                               fig_path:Path=None, data_range:tuple=None,
+                               plot_spec:dict={}):
+        """
+        Perform histogram analysis on a loaded RGB recipe with
+        enhance.do_hisogram_analysis. Separate method from histogram_analysis
+        because the generalization would be dirty.
+
+        :@param rgb_label: Valid loaded RGB label.
+        :@param nbins: Number of brightness bins to use in analyzing frequency.
+        :@param equalize: If True, histogram-equalizes the provided label's
+            array and returns it in the analysis dictionary.
+        :@param show: if True, shows a generated matplotlib plot.
+        :@param fig_path: if not None, saves histogram plot as a png
+        :@param plot_spec: geo_plot.plot_lines plot_spec specification
+        """
+        hists = []
+        labels = ["RED", "GREEN", "BLUE"]
+        array = self.get_rgb(rgb_label)
+        rgb = [array[:,:,i] for i in range(3)]
+        for i in range(3):
+            if not data_range is None:
+                tmp_data = np.clip(rgb[i], *tuple(data_range))
+            hists.append(enh.do_histogram_analysis(rgb[i], nbins, equalize))
+        if show or fig_path:
+            gp.plot_lines(
+                domain=[np.arange(nbins)*h["bin_size"]+h["Xmin"]
+                        for h in hists],
+                ylines=[h["hist"] for h in hists],
+                labels=labels,
+                plot_spec = plot_spec,
+                image_path=fig_path,
+                show=show
+                )
+        return hists
+
     def histogram_analysis(self, labels, nbins:int=256, equalize:bool=False,
                            show:bool=False, fig_path:Path=None,
                            data_range:tuple=None, plot_spec:dict={}):
@@ -723,7 +856,6 @@ class MOD021KM:
         :@param fig_path: if not None, saves histogram plot as a png
         :@param plot_spec: geo_plot.plot_lines plot_spec specification
         """
-        single_label = type(labels) in (str, int)
         labels = [labels] if single_label else labels
         hists = []
         for l in labels:
@@ -1028,6 +1160,10 @@ class MOD021KM:
             array_labels = sorted(
                     [b for b in self.bands if self.info(b)["is_reflective"]],
                     key=lambda b: self.ctr_wl(b))
+
+        # If all band numbers, sort by wavelength.
+        if all([type(s) is int for s in array_labels]):
+            array_labels.sort(key=lambda b: self.ctr_wl(b))
         if masks:
             assert len(mask_labels)==len(masks)
             for i in range(len(masks)):

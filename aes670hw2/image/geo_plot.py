@@ -8,8 +8,6 @@ import datetime as dt
 import numpy as np
 import math as m
 import pickle as pkl
-import xarray as xr
-import metpy
 import imageio
 
 from pathlib import Path
@@ -47,6 +45,8 @@ plot_spec_default = {
     "marker":"o",
     "line_style":":",
     "alpha":.5,
+    "xrange":None,
+    "yrange":None,
     "xlabel":"",
     "ylabel":"",
     "yrange":None,
@@ -246,11 +246,13 @@ def plot_lines(domain, ylines:list, image_path:Path=None,
             ax.plot(domain[i], ylines[i],
                     label=labels[i] if len(labels) else "",
                     linewidth=plot_spec.get("line_width"),
-                    color=colors[i])
+                    color=None if not colors else colors[i])
 
     ax.set_xlabel(plot_spec.get("xlabel"))
     ax.set_ylabel(plot_spec.get("ylabel"))
     ax.set_title(plot_spec.get("title"))
+    ax.set_ylim(plot_spec.get("yrange"))
+    ax.set_xlim(plot_spec.get("xrange"))
     if len(labels):
         plt.legend(fontsize=plot_spec.get("legend_font_size"))
     if show:

@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from multiprocessing import Pool
 from pprint import pprint as ppt
 
-from .GeosGeometry import GeosGeometry
+from aes670hw2 import GeosGeom
 
 class ABIManager:
     ftypes = {
@@ -29,7 +29,7 @@ class ABIManager:
         Time parsing relies on the file naming scheme, so the ftype much
         match a supported scheme. See the ftypes static property.
         """
-        # GeosGeometry object representing the spatial domain of the provided
+        # GeosGeom object representing the spatial domain of the provided
         # data. We make the assumption that the lat/lon or fixed-grid
         # coordinates associated with the provided file apply to all files
         # loaded at init.
@@ -69,7 +69,7 @@ class ABIManager:
     @property
     def geom(self):
         """
-        Returns the GeosGeometry object describing this ABIManager's data.
+        Returns the GeosGeom object describing this ABIManager's data.
         """
         return self._geom
 
@@ -89,12 +89,12 @@ class ABIManager:
 
     def _get_geom(self, dataset:xr.Dataset):
         """
-        Returns a GeosGeometry object based on the provided xarray Dataset,
+        Returns a GeosGeom object based on the provided xarray Dataset,
         which is parsed from a GOES-style netCDF.
         """
         _proj = dataset.goes_imager_projection
         sa_ew, sa_ns = np.meshgrid(dataset.x.data, dataset.y.data)
-        return GeosGeometry(
+        return GeosGeom(
             # Nadir longitude
             lon_proj_origin=_proj.longitude_of_projection_origin,
             e_w_scan_angles=sa_ew, # Horizontal FGC (m)
@@ -229,13 +229,13 @@ class ABIManager:
 
             nc_time = ABIManager.dt64_to_datetime(ds.coords["t"].values)
 
-            # Initialize a GeosGeometry object describing the geographic
+            # Initialize a GeosGeom object describing the geographic
             # properties of the first dataset, which will be used to calculate
             # lat/lon, zenith angles, and viewing angles based on the first
             # netCDF loaded. These geometry values are then used to label
             # the entire series of data being loaded.
             if not self._geom:
-                # Get index ranges from the GeosGeometry object
+                # Get index ranges from the GeosGeom object
                 self._geom = self._get_geom(ds)
                 lat_ind_range, lon_ind_range = self._geom.get_subgrid_indeces(
                         lat_range=lat_range,
@@ -527,7 +527,7 @@ class ABIManager:
         return pkl_path.as_posix()
 
     def solar_zenith_angles(self, utc_datetime:dt.datetime,
-                            geom:GeosGeometry=None):
+                            geom:GeosGeom=None):
         """
         Generates and returns solar zenith angles at the provided UTC
         datetime for the lat/lon ranges represented by the provided geometry.
@@ -604,7 +604,7 @@ class ABIManager:
         return self
 
 
-    def from_data_and_geom(self, data:xr.Dataset, geom:GeosGeometry,
+    def from_data_and_geom(self, data:xr.Dataset, geom:GeosGeom,
                            dataset_label:str):
         """
         Loads the provided data and geometry into this ABIManager's attributes.
@@ -612,7 +612,7 @@ class ABIManager:
         from a pkl or from netCDFs.
 
         :param data: Dataset derived from another ABIManager object.
-        :param geom: GeosGeometry object describing the provided data.
+        :param geom: GeosGeom object describing the provided data.
         """
         self._data = xr.Dataset({dataset_label:data})
         self._geom = geom

@@ -7,8 +7,36 @@ import itertools
 from datetime import datetime as dt
 from PIL import Image
 from pprint import pprint as ppt
+from scipy.stats import truncnorm
 
 from aes670hw2 import enhance
+
+def get_normal_array(height:int, width:int, mean:float=.5, stdev:float=.2,
+                     res:int=1024):
+    """
+    Returns a (height,width) shaped array of [0,1] float values that conform
+    to a normal distribution with the provided mean and standard deviation.
+
+    :@param res: number of value bins for the random variable.
+    """
+    m = mean*res
+    s = stdev*res
+    return np.vstack([truncnorm(0, (res-m)/s, loc=m, scale=s).rvs(width)/res
+                      for i in range(height)])
+
+def get_normal_rgb(height:int, width:int, means:tuple=(.5,.5,.5),
+                   stdevs:tuple=(.2,.2,.2), res:int=1024):
+    """
+    Returns a (height,width,3) array of [0,1] float values for red green and
+    blue pixels. Float values are selected based on a
+
+    :@param res: number of value bins for the random variable.
+    """
+    assert len(means) == 3
+    assert len(stdevs) == 3
+    print(list(zip(means, stdevs)))
+    return np.dstack([get_normal_array(height, width, m, s, res)
+                     for m,s in list(zip(means, stdevs))])
 
 def unique_colors(num:int, saturation:int=1, value:int=1):
     """
@@ -311,9 +339,9 @@ def label_at_index(X:np.ndarray, location:tuple, text:str=None, size:int=11,
     BL, TR = ((int(c_y+offset), int(c_x-offset)),
               (int(c_y-offset), int(c_x+offset)))
 
-    # Must flip coordinates for cv
     img = cv.line(X, TL[::-1], BR[::-1], color, thickness)
     img = cv.line(X, BL[::-1], TR[::-1], color, thickness)
+
     '''
     if not text is None:
         if text_offset is None:

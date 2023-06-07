@@ -9,7 +9,7 @@ import warnings
 # trig values off the edge of the Earth.
 warnings.filterwarnings('ignore', category=RuntimeWarning)
 
-class GeosGeometry:
+class GeosGeom:
     """Determine latitude, longitudes and viewing zenith angles from
     geostationary satellite viewing angles"""
 
@@ -40,7 +40,7 @@ class GeosGeometry:
 
     def __repr__(self):
         """ Returns a string reporting lat/lon sizes and ranges """
-        return f"GeosGeometry:\n" + \
+        return f"GeosGeom:\n" + \
                 f"\tLats rng: ({np.amin(np.nan_to_num(self._lats, 99999))},"+\
                 f" {np.amax(np.nan_to_num(self._lats, -99999))})  " + \
                 f"SIZE: {self._lats.size}  " + \
