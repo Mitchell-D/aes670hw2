@@ -1,6 +1,5 @@
 
 import requests
-import xarray as xr
 from pprint import pprint as ppt
 import json
 import netCDF4 as nc

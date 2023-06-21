@@ -2,8 +2,8 @@
 Methods for plotting geographic data on meshed axes
 """
 
-import cartopy.crs as ccrs
-import cartopy.feature as cf
+#import cartopy.crs as ccrs
+#import cartopy.feature as cf
 import datetime as dt
 import numpy as np
 import math as m
@@ -416,6 +416,9 @@ def geo_rgb_plot(R:np.ndarray, G:np.ndarray, B:np.ndarray, fig_path:Path,
             f"{(dpi*size[0], dpi*size[1])}")
     print(f"Generated figure at: {fig_path}")
 
+
+'''
+# Commented because I'm tired of the cartopy dependency
 def geo_scalar_plot(data:np.ndarray, lat:np.ndarray, lon:np.ndarray,
                     fig_path:Path=None, show:bool=True, plot_spec:dict={},
                     animate:bool=False):
@@ -534,3 +537,4 @@ def geo_scalar_plot(data:np.ndarray, lat:np.ndarray, lon:np.ndarray,
             print(f"Generated figure at: {fig_path}")
         if show:
             plt.show()
+'''
