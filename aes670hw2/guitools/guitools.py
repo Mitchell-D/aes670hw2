@@ -178,10 +178,12 @@ def get_category(X:np.ndarray, fill_color:tuple=(0,255,255),
 
     print("\033[1m\033[91mPress 'q' key to exit.\033[0m")
     print("\033[1m\033[91mPress 'x' key to cancel previous pixel.\033[0m")
+    wname = "catselect"
     while True:
-        cv.imshow('catselect', Xnew[:,:,::-1])
+        cv.imshow(wname, Xnew[:,:,::-1])
         key = cv.waitKey(1) & 0xFF
         if key == ord("q"):
+            cv.destroyWindow(wname)
             break
         elif key == ord("x"):
             if not len(coords):
@@ -189,7 +191,7 @@ def get_category(X:np.ndarray, fill_color:tuple=(0,255,255),
             y, x = coords.pop()
             Xnew[y,x,:] = X[y,x,:]
 
-    cv.destroyAllWindows()
+    #cv.destroyAllWindows()
     if show_pool and len(coords):
         show_pixel_pool(np.stack([ X[y,x] for y,x in set(coords) ], axis=0),
                         debug=debug)
@@ -299,16 +301,18 @@ def show_pixel_pool(pixels:np.ndarray, debug=False):
     pool = np.dstack([
         np.reshape(pixels[:,i], (side_length, side_length))
         for i in range(3) ])
-    cv.namedWindow("pixel pool")
+
+    wname = "pixel_pool"
+    cv.namedWindow(wname)
     if debug:
         print(f"\033[1mDisplaying selected pixel colors\033[0m")
     print("\033[1m\033[91mPress 'q' key to exit\033[0m")
     while True:
         cv.imshow('pixel pool', pool)
         if cv.waitKey(1) & 0xFF == ord("q"):
+            cv.destroyWindow(wname)
             break
 
-    cv.destroyAllWindows()
 
 def label_at_index(X:np.ndarray, location:tuple, text:str=None, size:int=11,
                    text_offset:tuple=None, color:tuple=(0,0,255),

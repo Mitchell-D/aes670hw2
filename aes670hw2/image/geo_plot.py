@@ -4,6 +4,7 @@ Methods for plotting geographic data on meshed axes
 
 #import cartopy.crs as ccrs
 #import cartopy.feature as cf
+#from cartopy.mpl.gridliner import LongitudeLocator, LatitudeLocator
 import datetime as dt
 import numpy as np
 import math as m
@@ -18,7 +19,6 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolo
 import matplotlib.animation as animation
 from matplotlib.ticker import LinearLocator, StrMethodFormatter, NullLocator
-from cartopy.mpl.gridliner import LongitudeLocator, LatitudeLocator
 from matplotlib.transforms import Affine2D
 from matplotlib.patches import Patch
 
