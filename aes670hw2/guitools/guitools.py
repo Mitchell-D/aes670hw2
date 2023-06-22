@@ -184,6 +184,7 @@ def get_category(X:np.ndarray, fill_color:tuple=(0,255,255),
         key = cv.waitKey(1) & 0xFF
         if key == ord("q"):
             cv.destroyWindow(wname)
+            cv.waitKey(1) # Causes window to disappear in OSX
             break
         elif key == ord("x"):
             if not len(coords):
@@ -239,6 +240,7 @@ def trackbar_select(X:np.ndarray, func, label="", resolution:int=256,
     while True:
         if cv.waitKey(1) & 0xFF == ord("q"):
             cv.destroyAllWindows()
+            cv.waitKey(1)
             return selection
 
 def region_select(X:np.ndarray, show_selection:bool=False, debug=False):
@@ -257,7 +259,7 @@ def region_select(X:np.ndarray, show_selection:bool=False, debug=False):
         print(f"Selected pixel boundary boxes y:({y}, {y+h}) x:({x}, {x+w})")
     subregion = X[y:y+h, x:x+w]
     cv.destroyWindow("select_window")
-
+    cv.waitKey(1)
     if show_selection:
         cv.imshow("subregion", subregion)
         cv.waitKey(-1)
@@ -280,6 +282,7 @@ def quick_render(X:np.ndarray):
         if cv.waitKey(1) & 0xFF == ord("q"):
             break
     cv.destroyAllWindows()
+    cv.waitKey(1)
 
 def show_pixel_pool(pixels:np.ndarray, debug=False):
     """
