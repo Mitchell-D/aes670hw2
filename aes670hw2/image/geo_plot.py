@@ -10,6 +10,7 @@ import numpy as np
 import math as m
 import pickle as pkl
 import imageio
+import shutil
 
 from pathlib import Path
 from PIL import Image
@@ -22,11 +23,13 @@ from matplotlib.ticker import LinearLocator, StrMethodFormatter, NullLocator
 from matplotlib.transforms import Affine2D
 from matplotlib.patches import Patch
 
-plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "sans-serif",
-    "font.sans-serif": "Helvetica",
-    })
+# If LaTeX is installed, set up formatting parameters
+if shutil.which("latex"):
+    plt.rcParams.update({
+        "text.usetex": True,
+        "font.family": "sans-serif",
+        "font.sans-serif": "Helvetica",
+        })
 
 
 plot_spec_default = {
