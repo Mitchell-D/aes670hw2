@@ -137,7 +137,7 @@ def get_category_series(X:np.ndarray, cat_count:int, category_names:list=None,
     return cats
 
 def get_category(X:np.ndarray, fill_color:tuple=(0,255,255),
-                 show_pool:bool=True, debug=False):
+                 show_pool:bool=False, debug=False):
     """
     Launch a GUI window for the user to choose pixels on an image that belong
     to a category, and return a list of array indeces corresponding to their
